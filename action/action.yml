@@ -1,0 +1,14 @@
+name: claimrot
+description: Fail a pull request when a claim cited in your docs has stopped being true.
+inputs:
+  verdicts:
+    description: Path to the verdicts JSON file produced by `claimrot report --json` (array of {verdict, confidence, claim, url})
+    required: false
+    default: claimrot-verdicts.json
+  confidence-floor:
+    description: Minimum confidence for a drift finding to fail the build
+    required: false
+    default: "0.75"
+runs:
+  using: node20
+  main: ../dist/action/main.js

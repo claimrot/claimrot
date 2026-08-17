@@ -1,0 +1,35 @@
+{
+  "_comment": "Hand-authored input for the committed example run (docs/examples §Task 14). Normally `claimrot ingest` produces this file's content automatically, by sending each fact pack's prose claims to Claude for reduction to {field, op, value, unit, anchor}. This machine has no Anthropic API credential, so these four assertions were transcribed by hand instead, directly from the real page structure recorded in docs/probes/2026-08-17-scraper-studio.md and re-confirmed with a live `bdata scraper run` on 2026-08-17. Everything downstream of this file — the collector call, the engine, scoring, resolution, and the report — is the real, unmodified pipeline; see examples/produce-output.ts.",
+  "source_url": "https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/",
+  "source_note": "Live page confirmed 200 OK, robots.txt allows crawling, both re-fetches issued serially with pauses.",
+  "assertions": [
+    {
+      "claim_id": "kaikoura-whale-watch-demo#adult-holds",
+      "text": "Adult admission on the Whale Watch Kaikoura Ocean Cabin tour is NZ$175.",
+      "field": "adult_price", "op": "eq", "value": 175, "unit": "NZD",
+      "anchor_label": "Adult", "anchor_context": "Ocean Cabin Pricing:",
+      "note": "Matches the real page as of 2026-08-17. Expected verdict: HOLDS."
+    },
+    {
+      "claim_id": "kaikoura-whale-watch-demo#child-holds",
+      "text": "Child (3-15 years) admission on the Ocean Cabin tour is NZ$60.",
+      "field": "child_price", "op": "eq", "value": 60, "unit": "NZD",
+      "anchor_label": "Child (3yrs-15yrs)", "anchor_context": "Ocean Cabin Pricing:",
+      "note": "Matches the real page as of 2026-08-17. Expected verdict: HOLDS."
+    },
+    {
+      "claim_id": "kaikoura-whale-watch-demo#adult-drifted",
+      "text": "Adult admission on the Ocean Cabin tour is NZ$170.",
+      "field": "adult_price", "op": "eq", "value": 170, "unit": "NZD",
+      "anchor_label": "Adult", "anchor_context": "Ocean Cabin Pricing:",
+      "note": "DELIBERATELY WRONG: the real page says 175, not 170. This is a synthetic prior claim chosen to exercise the DRIFTED branch against a genuine, unmodified collector response. Expected verdict: DRIFTED."
+    },
+    {
+      "claim_id": "kaikoura-whale-watch-demo#senior-blind",
+      "text": "Senior admission on the Ocean Cabin tour is NZ$140.",
+      "field": "senior_price", "op": "eq", "value": 140, "unit": "NZD",
+      "anchor_label": "Senior", "anchor_context": "Ocean Cabin Pricing:",
+      "note": "DELIBERATELY UNSUPPORTED: the page carries no Senior price at all. Chosen to exercise the blindness branch: no candidate anchors on 'Senior' -> heal fires -> the healed collector still finds nothing -> REMOVED (never DRIFTED, per the never-drift-on-failure rule)."
+    }
+  ]
+}

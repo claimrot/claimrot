@@ -1,0 +1,37 @@
+$ npm run cli -- --db examples/demo.db report --verdict DRIFTED
+
+DRIFTED  (confidence 1.00, checked 2026-08-17)
+  published: [deliberately stale, to exercise DRIFTED] Adult admission on the Ocean Cabin tour is NZ$170.
+  source:    https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/
+  now:       "Adult" = 175
+  why:       "Adult" now reads 175, expected 170
+
+$ npm run cli -- --db examples/demo.db report --verdict HOLDS
+
+HOLDS  (confidence 1.00, checked 2026-08-17)
+  published: Child (3-15 years) admission on the Ocean Cabin tour is NZ$60.
+  source:    https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/
+  now:       "Child (3yrs-15yrs)" = 60
+  why:       "Child (3yrs-15yrs)" still satisfies the assertion
+
+HOLDS  (confidence 1.00, checked 2026-08-17)
+  published: Adult admission on the Whale Watch Kaikoura Ocean Cabin tour is NZ$175.
+  source:    https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/
+  now:       "Adult" = 175
+  why:       "Adult" still satisfies the assertion
+
+$ npm run cli -- --db examples/demo.db report --verdict UNVERIFIABLE
+
+UNVERIFIABLE  (confidence 0.00, checked 2026-08-17)
+  published: [deliberately unsupported, to exercise blindness/heal/REMOVED] Senior admission on the Ocean Cabin tour is NZ$140.
+  source:    https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/
+  now:       -
+  why:       heal failed: {"collector_id":"c_msx2l16bsipcs0zz","status":"heal_trigger_failed","completed_steps":[],"prompt":"The scraper returned no candidate for the field \"senior_price\". It should extract every value on the page together with the label that governs it. Specifically, it must find the value labelled \"Senior\" within \"Ocean Cabin Pricing:\". Return each candidate with its value, unit, governing label, and enclosing heading.","view_url":"https://brightdata.com/cp/scrapers/c_msx2l16bsipcs0zz","next_step":"bdata scraper run c_msx2l16bsipcs0zz https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/","error":"Another refactor job is still in progress"}
+
+
+UNVERIFIABLE  (confidence 0.00, checked 2026-08-17)
+  published: [deliberately unsupported, to exercise blindness/heal/REMOVED] Senior admission on the Ocean Cabin tour is NZ$140.
+  source:    https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/
+  now:       -
+  why:       heal failed: {"collector_id":"c_msx2l16bsipcs0zz","status":"heal_trigger_failed","completed_steps":[],"prompt":"The scraper returned no candidate for the field \"senior_price\". It should extract every value on the page together with the label that governs it. Specifically, it must find the value labelled \"Senior\" within \"Ocean Cabin Pricing:\". Return each candidate with its value, unit, governing label, and enclosing heading.","view_url":"https://brightdata.com/cp/scrapers/c_msx2l16bsipcs0zz","next_step":"bdata scraper run c_msx2l16bsipcs0zz https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/","error":"Another refactor job is still in progress"}
+

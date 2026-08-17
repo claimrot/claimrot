@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Ocean Cabin Whale Watch | Kaikoura Whale Watch Co.</title>
+  <link rel="stylesheet" href="/assets/redesign-2026.css" />
+</head>
+<body>
+  <header class="hdr hdr--v2">
+    <a class="hdr__brand" href="/">Kaikoura Whale Watch Co.</a>
+    <nav class="hdr__nav">
+      <a href="/tours">Tours</a>
+      <a href="/about">About</a>
+      <a href="/book" class="hdr__cta">Book Now</a>
+    </nav>
+  </header>
+
+  <main class="tour-hero">
+    <h1>Whale Watch Tour</h1>
+    <p class="tour-hero__tagline">Three-hour ocean excursion, sperm whales guaranteed or your money back.</p>
+
+    <!-- Fare table replaced with a card grid in the 2026 redesign. The new
+         template migration dropped the schema.org Product/Offer block that
+         used to live in <head> — nobody ported it to the new CMS theme. The
+         price is still fully visible to a human, but a JSON-LD-only
+         collector is now blind here: this is the redesign the engine has
+         to survive. -->
+    <section class="fare-cards" id="fares" aria-label="Fares">
+      <div class="fare-card" data-cabin="ocean">
+        <div class="fare-card__media" style="background-image:url(/img/ocean-cabin.jpg)"></div>
+        <div class="fare-card__body">
+          <h3 class="fare-card__title">Ocean Cabin</h3>
+          <p class="fare-card__desc">Window seat, best whale visibility.</p>
+          <div class="fare-card__price">
+            <span class="fare-card__price-currency">NZD</span>
+            <strong class="fare-card__price-amount">175</strong>
+          </div>
+        </div>
+      </div>
+      <div class="fare-card" data-cabin="deck">
+        <div class="fare-card__media" style="background-image:url(/img/deck-cabin.jpg)"></div>
+        <div class="fare-card__body">
+          <h3 class="fare-card__title">Deck Cabin</h3>
+          <p class="fare-card__desc">Open-air deck seating.</p>
+          <div class="fare-card__price">
+            <span class="fare-card__price-currency">NZD</span>
+            <strong class="fare-card__price-amount">210</strong>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="itinerary-v2">
+      <h2>What to expect</h2>
+      <div class="itinerary-v2__grid">
+        <div class="itinerary-v2__item">Check-in 30 minutes before departure</div>
+        <div class="itinerary-v2__item">Warm clothing and motion-sickness tablets provided</div>
+        <div class="itinerary-v2__item">Return by land or sea, weather dependent</div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="ftr">
+    <p>&copy; 2026 Kaikoura Whale Watch Co.</p>
+  </footer>
+</body>
+</html>
