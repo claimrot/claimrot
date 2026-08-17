@@ -23,7 +23,8 @@ describe("runCollector", () => {
   });
 
   it("reports empty — not error — when the run succeeds with no candidates", async () => {
-    const payload = JSON.stringify([{ url: "u", fetched_at: "t", collector_version: "v", fields: {} }]);
+    // Probe B's real shape: flat, one field per candidate array, plus the `input` echo.
+    const payload = JSON.stringify([{ prices: [], input: { url: "https://example.com/x" } }]);
     const r = await runCollector("c_abc", "u", { exec: fakeExec(payload) });
     expect(r.status).toBe("empty");
   });
@@ -36,6 +37,15 @@ describe("runCollector", () => {
   it("reports error on unparseable output rather than pretending it is empty", async () => {
     const r = await runCollector("c_abc", "u", { exec: fakeExec("<html>502</html>") });
     expect(r.status).toBe("error");
+  });
+
+  it("reports empty, not ok, when no field name matches any synonym", async () => {
+    // A collector emitting names outside our SYNONYM lists is OUR mapping gap.
+    // Reporting `ok` here would hand scoring an unlabelled candidate and make a
+    // parsing failure look indistinguishable from a page that changed.
+    const payload = JSON.stringify([{ widgets: [{ sku: "X1", cost_cents: 4200 }] }]);
+    const r = await runCollector("c_abc", "u", { exec: fakeExec(payload) });
+    expect(r.status).toBe("empty");
   });
 });
 
@@ -104,5 +114,11 @@ describe("flagBlobCandidates", () => {
     const kept = flagBlobCandidates([blob, good], anchors);
     expect(kept).toHaveLength(1);
     expect(kept[0].label).toBe("Adult (16+)");   // a qualifier is NOT a blob
+  });
+
+  it("keeps an exact match when a base anchor is a token-subset of a qualified one", () => {
+    const anchors = ["Adult", "Adult (16+)"];
+    const exact = { value: 175, valueText: null, unit: "NZD", label: "Adult (16+)", context: "", path: "" };
+    expect(flagBlobCandidates([exact], anchors)).toHaveLength(1);
   });
 });

@@ -61,7 +61,15 @@ function toRecord(raw: any, url: string): CollectorRecord {
     if (k === "input") continue;
     const arr = Array.isArray(v) ? v : v && typeof v === "object" ? [v] : null;
     if (!arr || !arr.every((e) => e && typeof e === "object")) continue;
-    fields[k] = arr.map((c) => toCandidate(c as Record<string, unknown>));
+    // A candidate with no value, no valueText, AND no label carries nothing we
+    // mapped from any SYNONYM — that's OUR parsing gap (an AI-authored
+    // collector using field names outside our synonym lists), not a real
+    // result. Drop it, and if that empties the field, omit the field entirely
+    // so runCollector reports `empty` instead of a phantom `ok`.
+    const usable = arr
+      .map((c) => toCandidate(c as Record<string, unknown>))
+      .filter((c) => c.value !== null || c.valueText !== null || c.label !== "");
+    if (usable.length > 0) fields[k] = usable;
   }
 
   return {
@@ -137,14 +145,31 @@ export async function healCollector(
  * "Adult Child Senior" are structurally identical against a one-token anchor —
  * so it is caught here, where the whole anchor set is visible.
  */
+const isTokenSubset = (a: Set<string>, b: Set<string>): boolean => {
+  for (const t of a) if (!b.has(t)) return false;
+  return true;
+};
+
 export function flagBlobCandidates(cands: Candidate[], anchorLabels: string[]): Candidate[] {
   const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const tokenize = (s: string) => new Set(norm(s).split(" ").filter(Boolean));
   return cands.filter((c) => {
-    const tokens = new Set(norm(c.label).split(" ").filter(Boolean));
-    const matched = anchorLabels.filter((a) => {
-      const at = norm(a).split(" ").filter(Boolean);
-      return at.length > 0 && at.every((t) => tokens.has(t));
-    });
-    return matched.length <= 1;   // 0 or 1 anchor is fine; 2+ is a blob
+    const tokens = tokenize(c.label);
+    const matched = anchorLabels
+      .map((a) => tokenize(a))
+      .filter((at) => at.size > 0 && isTokenSubset(at, tokens));
+    // A base anchor ("Adult") and its qualified form ("Adult (16+)") co-occurring
+    // on one page both token-match a candidate labelled "Adult (16+)" — that is
+    // one real match, not two. Collapse any matched anchor whose tokens are a
+    // subset of another matched anchor's tokens (largest-first) before counting,
+    // so an exact match on the qualified anchor is never punished for also
+    // satisfying its base form. A genuine blob's anchors are mutually
+    // non-subset, so it still collapses to nothing and stays flagged.
+    const bySize = [...matched].sort((a, b) => b.size - a.size);
+    const maximal: Set<string>[] = [];
+    for (const s of bySize) {
+      if (!maximal.some((kept) => isTokenSubset(s, kept))) maximal.push(s);
+    }
+    return maximal.length <= 1;   // 0 or 1 distinct anchor is fine; 2+ is a blob
   });
 }
