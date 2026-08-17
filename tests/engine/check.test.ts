@@ -99,6 +99,27 @@ describe("checkAssertion", () => {
     expect(r.verdict).toBe("HOLDS");
   });
 
+  it("does not let an unrelated field's candidate outscore the right one", async () => {
+    // An "Adult"-labelled DURATION scores 0.87 on label+context alone and would
+    // clear, producing a false DRIFTED of "175 -> 3". The field name is weak
+    // evidence, not an identifier — enough to keep durations out of a price check.
+    const deps: EngineDeps = {
+      run: async () => ({
+        status: "ok",
+        record: {
+          url: "u", fetchedAt: "t", collectorVersion: "v", pageSignature: "",
+          fields: {
+            prices: [cand(60, "Child")],
+            durations: [{ value: 3, valueText: null, unit: null, label: "Adult", context: "Ocean Cabin", path: "" }],
+          },
+        },
+      }),
+      heal: async () => ({ status: "failed", error: "no heal available" }),
+    };
+    const r = await checkAssertion(a, "c_1", "https://x.example/p", deps);
+    expect(r.verdict).not.toBe("DRIFTED");   // the duration must never win
+  });
+
   it("treats an ok run with no clearing candidate as blindness, not evidence", async () => {
     // A candidate came back, but its label ("Parking") doesn't anchor to
     // "Adult" well enough to clear the threshold. That is still blindness —

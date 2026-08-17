@@ -16,16 +16,36 @@ const unverifiable = (reason: string): Resolution =>
 // this stays short of full confidence.
 const REMOVED_AFTER_HEAL_CONFIDENCE = 0.8;
 
+const normTokens = (s: string) =>
+  new Set(
+    s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(" ").filter(Boolean)
+      .map((t) => t.replace(/ies$/, "y").replace(/s$/, "")),   // naive singularise
+  );
+
 /**
- * The collector names its own fields (probe A returned "prices"; our assertion
- * says "adult_price"), so a key lookup cannot be the identifier. Spec 4.2 is
- * explicit that the ANCHOR identifies the value — the field name is only a
- * grouping hint. Prefer an exact key when one exists, otherwise consider every
- * candidate the collector returned and let the anchor pick the winner.
+ * The collector names its own fields, so the field name cannot be an identifier
+ * (that was the Critical). But it is still WEAK EVIDENCE, and discarding it
+ * entirely let an "Adult"-labelled duration outscore a price assertion.
+ * Exact key first, then fields whose name shares a token with ours, and only
+ * then everything — so an unrelated field competes solely when nothing else can.
+ *
+ * If a future adapter ever emitted an empty exact-key field alongside a
+ * differently-named one holding the real candidates (e.g.
+ * `{adult_price: [], prices: [...]}`), the `exact.length > 0` check falls
+ * through to the related/flatten tiers below — unreachable today because
+ * `toRecord` omits empty fields entirely, and even if it happened it can only
+ * over-collect candidates, never manufacture a false REMOVED.
  */
 function candidatesFor(record: CollectorRecord, field: string): Candidate[] {
   const exact = record.fields[field];
   if (exact && exact.length > 0) return exact;
+
+  const want = normTokens(field);
+  const related = Object.entries(record.fields)
+    .filter(([k]) => [...normTokens(k)].some((t) => want.has(t)))
+    .flatMap(([, v]) => v);
+  if (related.length > 0) return related;
+
   return Object.values(record.fields).flat();
 }
 
