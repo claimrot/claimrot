@@ -1,0 +1,14 @@
+name: claimrot
+description: Fail a pull request when a claim cited in your docs has stopped being true.
+inputs:
+  manifest:
+    description: Path to claimrot.yml
+    required: false
+    default: claimrot.yml
+  confidence-floor:
+    description: Minimum confidence for a drift finding to fail the build
+    required: false
+    default: "0.75"
+runs:
+  using: node20
+  main: ../dist/action/main.js
