@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { checkAssertion } from "../../src/engine/check.js";
+import { checkAssertion, healPrompt } from "../../src/engine/check.js";
 import type { EngineDeps } from "../../src/engine/check.js";
 import type { Assertion } from "../../src/model/types.js";
-import type { CollectRunResult } from "../../src/collect/types.js";
+import type { CollectRunResult, HealResult } from "../../src/collect/types.js";
 
 const a: Assertion = {
   id: "a1", claimId: "c1", field: "adult_price", op: "eq",
@@ -81,6 +81,39 @@ describe("checkAssertion", () => {
     expect(r.verdict).toBe("UNVERIFIABLE");
   });
 
+  it("resolves candidates when the collector names its field differently", async () => {
+    // Probe A returns {"prices": [...]} while the assertion says "adult_price".
+    // Keying on the field name made every real check heal and then report
+    // REMOVED on a page that still publishes the value.
+    const deps: EngineDeps = {
+      run: async () => ({
+        status: "ok",
+        record: {
+          url: "u", fetchedAt: "t", collectorVersion: "v", pageSignature: "",
+          fields: { prices: [cand(175)] },      // collector's name, not ours
+        },
+      }),
+      heal: async () => { throw new Error("must not heal — the value is visible"); },
+    };
+    const r = await checkAssertion(a, "c_1", "https://x.example/p", deps);
+    expect(r.verdict).toBe("HOLDS");
+  });
+
+  it("treats an ok run with no clearing candidate as blindness, not evidence", async () => {
+    // A candidate came back, but its label ("Parking") doesn't anchor to
+    // "Adult" well enough to clear the threshold. That is still blindness —
+    // it must heal, not silently fall through unresolved.
+    let heals = 0;
+    const deps: EngineDeps = {
+      run: async () => record([cand(175, "Parking")]),
+      heal: async () => { heals++; return { status: "failed", error: "x" }; },
+    };
+    const r = await checkAssertion(a, "c_1", "https://x.example/p", deps);
+    expect(r.verdict).not.toBe("HOLDS");
+    expect(r.verdict).not.toBe("DRIFTED");
+    expect(heals).toBe(1);
+  });
+
   // THE INVARIANT.
   it("never reports DRIFTED for any combination of failure and heal outcome", async () => {
     const runs: CollectRunResult[] = [
@@ -88,7 +121,7 @@ describe("checkAssertion", () => {
       { status: "error", error: "timeout" },
       record([]),
     ];
-    const heals: any[] = [
+    const heals: HealResult[] = [
       { status: "failed", error: "x" },
       { status: "awaiting_approval", preview: {} },
       { status: "healed", collectorVersion: "v2", preview: {} },
@@ -102,5 +135,22 @@ describe("checkAssertion", () => {
         expect(r.verdict).not.toBe("DRIFTED");
       }
     }
+  });
+});
+
+describe("healPrompt", () => {
+  it("names the anchor label so the heal knows what it went blind to", () => {
+    const prompt = healPrompt(a);
+    expect(prompt).toContain(a.anchorLabel);
+  });
+
+  it("never exceeds the CLI's 1000-character cap even with a pathological anchor", () => {
+    const pathological: Assertion = {
+      ...a,
+      anchorLabel: "x".repeat(5000),
+      anchorContext: "y".repeat(5000),
+    };
+    const prompt = healPrompt(pathological);
+    expect(prompt.length).toBeLessThanOrEqual(1000);
   });
 });
