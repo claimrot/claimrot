@@ -38,7 +38,48 @@ Choose the operator honestly:
 
 If a claim carries no testable value — an impression, an opinion, a description with no
 figure or named policy — return an empty assertions array. That is a correct answer, and
-far better than inventing something checkable. Do not guess.`;
+far better than inventing something checkable. Do not guess.
+
+## Anchors, specifically
+
+anchorLabel must be text a reader would actually find on the page, sitting next to and
+governing the value — never the value itself, and never a paraphrase invented for
+convenience. If you cannot name a label that would appear on the page, you cannot write
+the assertion.
+
+anchorContext is not optional decoration. A label alone is rarely enough to find one value
+among several on a real page — "Adult" appears in a pricing table, a group-size table, and
+a terms section. anchorContext names the surrounding structure (the tour name, the table
+caption, the section heading) that tells a checker which "Adult" this is. An assertion with
+a label but no disambiguating context is not useful: it cannot be matched with confidence
+later, so do not emit one.
+
+## Worked examples
+
+Example 1 — testable, and with more than one value to track:
+Claim: "Whale Watch's Ocean Cabin tour is NZ$175 per adult, and NZ$185 from 1 October 2026."
+This page publishes two adult prices that a checker must be able to tell apart, so it is
+two assertions, not one:
+  { field: "adult_price", op: "eq", valueNum: 175, unit: "NZD",
+    anchorLabel: "Adult", anchorContext: "Ocean Cabin" }
+  { field: "adult_price_from_2026-10-01", op: "eq", valueNum: 185, unit: "NZD",
+    anchorLabel: "Adult", anchorContext: "Ocean Cabin, from 1 October 2026" }
+Both assertions reuse the label "Adult" because that is the literal text on the page; the
+context is what separates the current figure from the future one.
+
+Example 2 — untestable:
+Claim: "The harbour is a pleasant place to spend an afternoon."
+There is no figure, no named policy, nothing a page could publish that a scraper could
+later confirm or refute. This is an opinion about the experience, not a fact about the
+page. Correct output: { assertions: [] }.
+
+## Operator pages
+
+Tour, ticket, and rental operator pages commonly publish more than one variant of what
+looks like a single price or duration: current vs. future, adult vs. concession, weekday
+vs. weekend, peak vs. off-peak. Do not collapse these into one assertion. Each distinct
+governing label — each row of a pricing table, each named tier — is its own assertion with
+its own anchorContext, even when several of them share the same anchorLabel text.`;
 
 async function liveParse(text: string): Promise<unknown> {
   const client = new Anthropic();
