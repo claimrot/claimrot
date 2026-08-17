@@ -9,7 +9,12 @@ export class HostQueue {
   constructor(private readonly minIntervalMs = 1250) {}
 
   run<T>(url: string, fn: () => Promise<T>): Promise<T> {
-    const host = new URL(url).host;
+    let host: string;
+    try {
+      host = new URL(url).host;
+    } catch (err) {
+      return Promise.reject(err);
+    }
     const prior = this.tails.get(host) ?? Promise.resolve();
     const next = prior
       .catch(() => {})
