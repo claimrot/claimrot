@@ -85,7 +85,9 @@ export function buildProgram(): Command {
           ingestedAt: c.ingested_at, checkedAt: c.checked_at, volatile: !!c.volatile,
           expiresAt: c.expires_at, status: c.status,
         };
-        const reference = new Date(c.checked_at || c.ingested_at);
+        // Scheduler reference point: last time CLAIMROT checked (last_checked_at,
+        // once it exists), never the immutable source-verification checked_at.
+        const reference = new Date(c.last_checked_at || c.checked_at || c.ingested_at);
         const due = Number.isNaN(reference.getTime())
           || nextCheckAt(claim, lastVerdict, consecutiveUnverifiable, reference) <= now;
         if (due) dueClaimIds.add(c.id);
@@ -99,9 +101,12 @@ export function buildProgram(): Command {
       const insVerdict = db.prepare(
         `INSERT INTO verdicts (id,check_id,claim_id,verdict,confidence,evidence_json,created_at)
          VALUES (?,?,?,?,?,?,?)`);
-      // checked_at is the scheduler's reference point — without moving it forward
-      // a claim that clears the "due" threshold once stays due on every run.
-      const updClaimChecked = db.prepare(`UPDATE claims SET checked_at = ? WHERE id = ?`);
+      // last_checked_at is the scheduler's reference point — without moving it
+      // forward a claim that clears the "due" threshold once stays due on every
+      // run. checked_at (source verification date) must NEVER be written here:
+      // the half-life study measures age against it, so touching it after ingest
+      // zeroes every age bucket.
+      const updClaimChecked = db.prepare(`UPDATE claims SET last_checked_at = ? WHERE id = ?`);
 
       // Wraps the plain collector run so every "ok" record is screened through
       // flagBlobCandidates before checkAssertion ever sees it. A field that is

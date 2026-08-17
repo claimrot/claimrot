@@ -3,8 +3,15 @@ CREATE TABLE IF NOT EXISTS documents (
 );
 CREATE TABLE IF NOT EXISTS claims (
   id TEXT PRIMARY KEY, document_id TEXT NOT NULL, text TEXT NOT NULL,
-  source_url TEXT NOT NULL, ingested_at TEXT NOT NULL, checked_at TEXT NOT NULL,
-  volatile INTEGER NOT NULL, expires_at TEXT, status TEXT NOT NULL DEFAULT 'active'
+  source_url TEXT NOT NULL, ingested_at TEXT NOT NULL,
+  -- checked_at: when the SOURCE claim was last verified by whoever authored the
+  -- fact pack. Immutable after ingest — the half-life study measures age against
+  -- this column, so writing to it after ingest zeroes every age bucket.
+  checked_at TEXT NOT NULL,
+  volatile INTEGER NOT NULL, expires_at TEXT, status TEXT NOT NULL DEFAULT 'active',
+  -- last_checked_at: when claimrot itself last ran a check for this claim. NULL
+  -- means claimrot has never checked it. This is the scheduler's reference point.
+  last_checked_at TEXT
 );
 CREATE TABLE IF NOT EXISTS assertions (
   id TEXT PRIMARY KEY, claim_id TEXT NOT NULL, field TEXT NOT NULL, op TEXT NOT NULL,
