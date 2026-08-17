@@ -33,7 +33,17 @@ Real output, from a real page. More of it in [`examples/`](examples/).
 
 ## Use it
 
-Node 22+. An Anthropic API key is needed for `ingest` only.
+Node 22+. Only `ingest` needs a model at all, and it will use whichever of
+these you already have — an API key, or a CLI you're logged into:
+
+| `--backend` | Needs | Notes |
+| --- | --- | --- |
+| `api` | `ANTHROPIC_API_KEY` | Fastest. The only one that works in CI. |
+| `claude-cli` | `claude`, logged in | No API key. ~30s per claim. |
+| `codex-cli` | `codex`, logged in | No API key. ~25s per claim. |
+
+Picked automatically in that order, or set it yourself with
+`--backend` / `CLAIMROT_INGEST`. `check` and `report` need none of them.
 
 ```bash
 git clone https://github.com/claimrot/claimrot

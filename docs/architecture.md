@@ -138,6 +138,29 @@ Every check afterwards is a fetch and a numeric comparison — no model call, no
 per-check inference cost. That is what makes monitoring thousands of claims on a
 schedule affordable rather than theoretical.
 
+Because that call happens once, locally, and never in CI, it does not have to be
+an API call. `src/ingest/backends.ts` offers three, all constrained by the same
+JSON Schema:
+
+| Backend | Auth | Rough cost per claim |
+| --- | --- | --- |
+| `api` | `ANTHROPIC_API_KEY` | seconds |
+| `claude-cli` | operator's Claude Code login | ~30s |
+| `codex-cli` | operator's Codex login | ~25s |
+
+The CLIs are slower because each shells out to a whole agent, but they need no
+API key — which matters when the person running `ingest` is a contributor or a
+judge rather than the project's billing account. The API backend is the only one
+usable from CI, since the others authenticate as a logged-in human.
+
+`ASSERTIONS_JSON_SCHEMA` is written out rather than derived from the zod schema:
+the SDK's `betaZodOutputFormat` helper calls `z.toJSONSchema()`, which exists
+only in zod 4, and this project is on zod 3. Passing it the zod schema threw
+before any request was made — which nothing caught, because every
+`normalizeClaim` test injects a fake parser and a live ingest had never run.
+Two declarations of one contract can drift, so `tests/ingest/backends.test.ts`
+feeds fixtures to both and asserts they accept and reject identically.
+
 ## Storage
 
 One SQLite file.

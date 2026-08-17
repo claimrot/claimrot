@@ -1,8 +1,13 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import type { Assertion } from "../model/types.js";
 
+/**
+ * `.strict()` on both objects, to match `additionalProperties: false` in the
+ * JSON Schema below. Zod's default is to STRIP unknown keys and succeed, which
+ * would have let a backend return a field we never asked for and have it
+ * silently vanish — the two declarations must reject the same things or the
+ * model is being constrained by one and judged by the other.
+ */
 export const NormalizedSchema = z.object({
   assertions: z.array(z.object({
     field: z.string(),
@@ -14,12 +19,55 @@ export const NormalizedSchema = z.object({
     tolerance: z.number().nullable(),
     anchorLabel: z.string(),
     anchorContext: z.string(),
-  })),
-});
+  }).strict()),
+}).strict();
+
+/**
+ * The same contract as `NormalizedSchema`, as JSON Schema, because all three
+ * backends want it in that form: the API takes it as
+ * `output_format: {type: "json_schema"}`, `claude --json-schema` takes it
+ * inline, and `codex exec --output-schema` takes it as a file.
+ *
+ * It is written out rather than derived because the SDK's `betaZodOutputFormat`
+ * helper calls `z.toJSONSchema()`, which only exists in zod 4 — this project is
+ * on zod 3, so that helper throws before it ever reaches the network. Two
+ * declarations of one contract can drift, so `tests/ingest/schema.test.ts`
+ * feeds fixtures to both and asserts they accept and reject exactly the same
+ * things.
+ */
+export const ASSERTIONS_JSON_SCHEMA = {
+  type: "object",
+  required: ["assertions"],
+  additionalProperties: false,
+  properties: {
+    assertions: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "field", "op", "valueNum", "valueText", "valueMax",
+          "unit", "tolerance", "anchorLabel", "anchorContext",
+        ],
+        properties: {
+          field: { type: "string" },
+          op: { type: "string", enum: ["eq", "approx", "range", "contains", "exists"] },
+          valueNum: { type: ["number", "null"] },
+          valueText: { type: ["string", "null"] },
+          valueMax: { type: ["number", "null"] },
+          unit: { type: ["string", "null"] },
+          tolerance: { type: ["number", "null"] },
+          anchorLabel: { type: "string" },
+          anchorContext: { type: "string" },
+        },
+      },
+    },
+  },
+} as const;
 
 export type ParseFn = (text: string) => Promise<unknown>;
 
-const SYSTEM = `You reduce a prose claim about a web page into structured, machine-testable assertions.
+export const SYSTEM = `You reduce a prose claim about a web page into structured, machine-testable assertions.
 
 Return one assertion per independently checkable value. Prefer few, high-quality assertions
 over many marginal ones.
@@ -81,22 +129,17 @@ vs. weekend, peak vs. off-peak. Do not collapse these into one assertion. Each d
 governing label — each row of a pricing table, each named tier — is its own assertion with
 its own anchorContext, even when several of them share the same anchorLabel text.`;
 
-async function liveParse(text: string): Promise<unknown> {
-  const client = new Anthropic();
-  const response = await client.beta.messages.parse({
-    model: "claude-opus-5",
-    max_tokens: 4096,
-    system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
-    output_format: betaZodOutputFormat(NormalizedSchema),
-    messages: [{ role: "user", content: `Claim:\n${text}` }],
-  });
-  return response.parsed_output;
-}
-
+/**
+ * `parse` is required rather than defaulted. The default used to be a live API
+ * call, which meant every caller silently depended on a credential and on the
+ * one code path no test exercises — and that path was broken from the start
+ * (see ASSERTIONS_JSON_SCHEMA). Backends now live in ./backends.ts and the
+ * caller chooses one, so "which model did this" is answered at the call site.
+ */
 export async function normalizeClaim(
-  text: string, claimId: string, deps: { parse?: ParseFn } = {},
+  text: string, claimId: string, deps: { parse: ParseFn },
 ): Promise<Assertion[]> {
-  const raw = await (deps.parse ?? liveParse)(text);
+  const raw = await deps.parse(text);
   const parsed = NormalizedSchema.safeParse(raw);
   if (!parsed.success) return [];
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
+import { spawnSync } from "node:child_process";
 import { globSync } from "node:fs";
 import type Database from "better-sqlite3";
 import { openDb } from "./db/index.js";
@@ -10,6 +11,7 @@ import {
 } from "./db/statements.js";
 import { readFactPack } from "./ingest/factpack.js";
 import { normalizeClaim } from "./ingest/normalize.js";
+import { selectBackend } from "./ingest/backends.js";
 import { resolveCollector, GENERIC_COLLECTOR_ID, isGenericCollector } from "./collect/registry.js";
 import { runCollector, healCollector, withBlobScreening } from "./collect/studio.js";
 import { runGeneric } from "./collect/generic.js";
@@ -210,19 +212,30 @@ function runOneCheck(row: DueAssertionRow, queue: HostQueue, ctx: CheckContext):
   });
 }
 
+/**
+ * Whether a binary is runnable here. `--version` rather than a PATH scan so a
+ * shell function, alias-shim or broken symlink cannot pass as an installed CLI.
+ */
+function onPath(bin: string): boolean {
+  return spawnSync(bin, ["--version"], { stdio: "ignore" }).status === 0;
+}
+
 export function buildProgram(): Command {
   const program = new Command("claimrot");
   program.option("--db <path>", "sqlite path", "claimrot.db");
 
   program.command("ingest").argument("<glob>", "fact-pack glob")
-    .action(async (pattern: string) => {
+    .option("--backend <name>", "api | claude-cli | codex-cli (default: whatever this machine can authenticate)")
+    .action(async (pattern: string, opts: { backend?: string }) => {
       const db = openDb(program.opts().db);
       const insClaim = db.prepare(INSERT_CLAIM_SQL);
       const insAssertion = db.prepare(INSERT_ASSERTION_SQL);
+      const { name, parse } = selectBackend(opts.backend, process.env, onPath);
+      console.log(`ingest backend: ${name}`);
 
       for (const file of globSync(pattern)) {
         for (const claim of readFactPack(file)) {
-          const assertions = await normalizeClaim(claim.text, claim.id);
+          const assertions = await normalizeClaim(claim.text, claim.id, { parse });
           insClaim.run({ ...claim, volatile: claim.volatile ? 1 : 0,
             status: assertions.length ? "active" : "untestable" });
           for (const a of assertions) insAssertion.run(a);
