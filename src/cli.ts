@@ -14,6 +14,30 @@ import { renderReceipts } from "./report/receipts.js";
 import { halfLife } from "./report/study.js";
 import type { Candidate, Claim, Verdict } from "./model/types.js";
 import type { CollectRunResult } from "./collect/types.js";
+import type Database from "better-sqlite3";
+type Db = Database.Database;
+
+// Exported (not just used inline) so a regression test can assert this exact
+// string targets last_checked_at — checked_at must never be written after
+// ingest, since report/study.ts measures claim age against it.
+export const UPDATE_LAST_CHECKED_SQL = `UPDATE claims SET last_checked_at = ? WHERE id = ?`;
+
+/**
+ * Spec §5 escalation: a claim whose two most recent verdicts are BOTH
+ * AMBIGUOUS has read two ways twice running — that's a human's problem, not
+ * something the scheduler or the collector can resolve on its own.
+ */
+export function repeatAmbiguousClaims(db: Db): string[] {
+  const rows = db.prepare(
+    `SELECT claim_id FROM (
+       SELECT claim_id, verdict,
+              ROW_NUMBER() OVER (PARTITION BY claim_id ORDER BY created_at DESC) AS rn
+       FROM verdicts
+     ) WHERE rn <= 2 GROUP BY claim_id
+       HAVING COUNT(*) = 2 AND SUM(verdict = 'AMBIGUOUS') = 2`,
+  ).all() as { claim_id: string }[];
+  return rows.map((r) => r.claim_id);
+}
 
 export function buildProgram(): Command {
   const program = new Command("claimrot");
@@ -106,7 +130,7 @@ export function buildProgram(): Command {
       // run. checked_at (source verification date) must NEVER be written here:
       // the half-life study measures age against it, so touching it after ingest
       // zeroes every age bucket.
-      const updClaimChecked = db.prepare(`UPDATE claims SET last_checked_at = ? WHERE id = ?`);
+      const updClaimChecked = db.prepare(UPDATE_LAST_CHECKED_SQL);
 
       // Wraps the plain collector run so every "ok" record is screened through
       // flagBlobCandidates before checkAssertion ever sees it. A field that is
@@ -153,7 +177,16 @@ export function buildProgram(): Command {
     });
 
   program.command("report").option("--verdict <v>", "filter by verdict", "DRIFTED")
-    .action((opts) => console.log(renderReceipts(openDb(program.opts().db), opts.verdict)));
+    .action((opts) => {
+      const db = openDb(program.opts().db);
+      console.log(renderReceipts(db, opts.verdict));
+
+      const repeats = repeatAmbiguousClaims(db);
+      if (repeats.length > 0) {
+        console.log("\nRepeat-ambiguous (needs a human):");
+        for (const id of repeats) console.log(`  ${id}`);
+      }
+    });
 
   program.command("study")
     .action(() => console.log(JSON.stringify(halfLife(openDb(program.opts().db)), null, 2)));
