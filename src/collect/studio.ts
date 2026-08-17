@@ -154,22 +154,22 @@ export function flagBlobCandidates(cands: Candidate[], anchorLabels: string[]): 
   const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   const tokenize = (s: string) => new Set(norm(s).split(" ").filter(Boolean));
   return cands.filter((c) => {
-    const tokens = tokenize(c.label);
+    const labelTokens = tokenize(c.label);
     const matched = anchorLabels
       .map((a) => tokenize(a))
-      .filter((at) => at.size > 0 && isTokenSubset(at, tokens));
-    // A base anchor ("Adult") and its qualified form ("Adult (16+)") co-occurring
-    // on one page both token-match a candidate labelled "Adult (16+)" — that is
-    // one real match, not two. Collapse any matched anchor whose tokens are a
-    // subset of another matched anchor's tokens (largest-first) before counting,
-    // so an exact match on the qualified anchor is never punished for also
-    // satisfying its base form. A genuine blob's anchors are mutually
-    // non-subset, so it still collapses to nothing and stays flagged.
-    const bySize = [...matched].sort((a, b) => b.size - a.size);
-    const maximal: Set<string>[] = [];
-    for (const s of bySize) {
-      if (!maximal.some((kept) => isTokenSubset(s, kept))) maximal.push(s);
-    }
+      .filter((at) => at.size > 0 && isTokenSubset(at, labelTokens));
+    // Collapse a matched anchor into a larger matched anchor ONLY when that
+    // larger anchor covers the whole candidate label. "Adult" folds into
+    // "Adult (16+)" for label "Adult (16+)" — the larger anchor explains every
+    // token. It must NOT fold into "Adult Child" for label "Adult Child
+    // Senior", where "Senior" is left unexplained by any matched anchor and
+    // the candidate is a genuine blob. (A collapse target that covers the
+    // whole label is, by construction, equal to the label's own token set —
+    // a plain subset relationship between two anchors is not enough, or
+    // "Adult" would wrongly fold into "Adult Child" too.)
+    const maximal = matched.filter((a) =>
+      !matched.some((b) => b !== a && isTokenSubset(a, b) && isTokenSubset(labelTokens, b)),
+    );
     return maximal.length <= 1;   // 0 or 1 distinct anchor is fine; 2+ is a blob
   });
 }

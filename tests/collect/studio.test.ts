@@ -121,4 +121,13 @@ describe("flagBlobCandidates", () => {
     const exact = { value: 175, valueText: null, unit: "NZD", label: "Adult (16+)", context: "", path: "" };
     expect(flagBlobCandidates([exact], anchors)).toHaveLength(1);
   });
+
+  it("still drops a blob when one anchor is a word-subset of another", () => {
+    // Anchors ["Adult", "Adult Child"] vs label "Adult Child Senior": the earlier
+    // subset-collapse folded these to one match and kept a genuine blob, because
+    // "Senior" was left unexplained by either anchor.
+    const anchors = ["Adult", "Adult Child"];
+    const blob = { value: 300, valueText: null, unit: "NZD", label: "Adult Child Senior", context: "", path: "" };
+    expect(flagBlobCandidates([blob], anchors)).toHaveLength(0);
+  });
 });
