@@ -79,7 +79,7 @@ export function scoreCandidate(a: Assertion, c: Candidate): ScoredCandidate {
     weightTotal += W[k];
   }
   const hasFloor = signals.labelSimilarity !== null && weightTotal >= 0.5;
-  const score = hasFloor && weightTotal > 0 ? weightedSum / weightTotal : 0;
+  const score = hasFloor ? weightedSum / weightTotal : 0;
 
   return { ...c, score, signals };
 }

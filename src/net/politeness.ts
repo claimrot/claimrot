@@ -31,3 +31,14 @@ export class HostQueue {
     return next as Promise<T>;
   }
 }
+
+/** Minimal robots.txt check against the wildcard agent group. Absent robots = allowed. */
+export function isAllowed(robotsTxt: string, path: string): boolean {
+  const disallowed = robotsTxt
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => /^disallow:/i.test(l))
+    .map((l) => l.slice(l.indexOf(":") + 1).trim())
+    .filter(Boolean);
+  return !disallowed.some((rule) => path.startsWith(rule));
+}

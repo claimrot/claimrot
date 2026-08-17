@@ -14,11 +14,11 @@ const cand = (over: Partial<Candidate>): Candidate => ({
 });
 
 describe("scoreCandidate", () => {
-  it("scores an exact label+context+unit+path match near 1", () => {
+  it("scores an exact label+context+unit+path match at 1", () => {
     const s = scoreCandidate(assertion, cand({}));
     // Perfect anchor match renormalises to 1.0: corroboration is unavailable
     // at this layer (excluded from both sums) until the engine raises it.
-    expect(s.score).toBeGreaterThanOrEqual(0.85);
+    expect(s.score).toBe(1);
   });
 
   it("clears the threshold on a label match even when the DOM path moved", () => {
@@ -72,6 +72,19 @@ describe("scoreCandidate", () => {
     // this 0.33 and made the AMBIGUOUS branch unreachable on real pages.
     const s = scoreCandidate(assertion, cand({ context: "Ocean Cabin to 30 Sep 2026" }));
     expect(s.signals.contextSimilarity).toBe(1);
+  });
+
+  it("pins the weightTotal === 0.5 floor boundary (label + unit only)", () => {
+    // hasFloor requires weightTotal >= 0.5. With only label (0.4) and unit (0.1)
+    // available — context and path both absent — weightTotal lands EXACTLY on
+    // 0.5. This must still clear the floor and renormalise to a full match, so
+    // a later refactor to `> 0.5` (excluding this boundary) fails loudly here
+    // instead of silently passing every other test.
+    const labelAndUnitOnly: Assertion = { ...assertion, anchorContext: "", anchorPath: "" };
+    const s = scoreCandidate(labelAndUnitOnly, cand({}));
+    expect(s.signals.contextSimilarity).toBeNull();
+    expect(s.signals.pathStability).toBeNull();
+    expect(s.score).toBe(1);
   });
 
   it("clears on a real collector's output, which carries no DOM path", () => {
