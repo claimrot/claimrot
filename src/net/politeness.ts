@@ -32,13 +32,54 @@ export class HostQueue {
   }
 }
 
-/** Minimal robots.txt check against the wildcard agent group. Absent robots = allowed. */
+/**
+ * robots.txt check scoped to the wildcard agent group only (`User-agent: *`) —
+ * we have no bot name of our own to match a named group, so any group naming
+ * a specific agent is not ours to obey or ignore. Absent robots.txt, an empty
+ * file, or no wildcard group at all means allowed.
+ *
+ * Handles `Allow:` as well as `Disallow:`: per the de facto standard (RFC 9309
+ * §2.2.2 / Google's documented behaviour), the LONGEST matching rule wins: a
+ * targeted `Allow: /private/rates` inside a blanket `Disallow: /private/`
+ * carves out an exception. A tie in length favours `Allow` (the less
+ * restrictive reading) since both rules describe the same path with equal
+ * specificity.
+ */
 export function isAllowed(robotsTxt: string, path: string): boolean {
-  const disallowed = robotsTxt
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => /^disallow:/i.test(l))
-    .map((l) => l.slice(l.indexOf(":") + 1).trim())
-    .filter(Boolean);
-  return !disallowed.some((rule) => path.startsWith(rule));
+  type Rule = { type: "allow" | "disallow"; value: string };
+  type Group = { agents: string[]; rules: Rule[] };
+
+  const groups: Group[] = [];
+  let current: Group | null = null;
+
+  for (const raw of robotsTxt.split("\n")) {
+    const line = raw.split("#")[0].trim();
+    if (!line) continue;
+    const m = /^([a-zA-Z-]+):\s*(.*)$/.exec(line);
+    if (!m) continue;
+    const key = m[1].toLowerCase();
+    const value = m[2].trim();
+
+    if (key === "user-agent") {
+      // A fresh block of User-agent lines (no rules seen yet under `current`)
+      // still belongs to the SAME group — only a rule line closes a group.
+      if (!current || current.rules.length > 0) {
+        current = { agents: [], rules: [] };
+        groups.push(current);
+      }
+      current.agents.push(value);
+    } else if ((key === "disallow" || key === "allow") && current && value !== "") {
+      current.rules.push({ type: key, value });
+    }
+  }
+
+  const rules = groups.filter((g) => g.agents.includes("*")).flatMap((g) => g.rules);
+
+  let best: Rule | null = null;
+  for (const rule of rules) {
+    if (!path.startsWith(rule.value)) continue;
+    if (!best || rule.value.length > best.value.length) { best = rule; continue; }
+    if (rule.value.length === best.value.length && rule.type === "allow") best = rule;
+  }
+  return best === null || best.type === "allow";
 }

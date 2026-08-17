@@ -3,25 +3,6 @@
 <head>
   <meta charset="utf-8" />
   <title>Ocean Cabin Whale Watch | Kaikoura Whale Watch Co.</title>
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Product",
-        "name": "Ocean Cabin",
-        "description": "A window-side seat aboard our whale watch vessel, departing Kaikoura harbour.",
-        "offers": {
-          "@type": "Offer",
-          "price": "175",
-          "priceCurrency": "NZD",
-          "availability": "https://schema.org/InStock",
-          "url": "https://x.example/p"
-        }
-      }
-    ]
-  }
-  </script>
   <link rel="stylesheet" href="/assets/redesign-2026.css" />
 </head>
 <body>
@@ -38,9 +19,12 @@
     <h1>Whale Watch Tour</h1>
     <p class="tour-hero__tagline">Three-hour ocean excursion, sperm whales guaranteed or your money back.</p>
 
-    <!-- Fare table replaced with a card grid in the 2026 redesign; the
-         marketing site keeps the schema.org Product/Offer block untouched
-         since it's owned by SEO tooling, not the template layer. -->
+    <!-- Fare table replaced with a card grid in the 2026 redesign. The new
+         template migration dropped the schema.org Product/Offer block that
+         used to live in <head> — nobody ported it to the new CMS theme. The
+         price is still fully visible to a human, but a JSON-LD-only
+         collector is now blind here: this is the redesign the engine has
+         to survive. -->
     <section class="fare-cards" id="fares" aria-label="Fares">
       <div class="fare-card" data-cabin="ocean">
         <div class="fare-card__media" style="background-image:url(/img/ocean-cabin.jpg)"></div>

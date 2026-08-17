@@ -9,7 +9,7 @@ import { runCollector, healCollector, flagBlobCandidates } from "./collect/studi
 import { checkAssertion } from "./engine/check.js";
 import type { EngineDeps } from "./engine/check.js";
 import { nextCheckAt } from "./engine/schedule.js";
-import { HostQueue } from "./net/politeness.js";
+import { HostQueue, isAllowed } from "./net/politeness.js";
 import { renderReceipts } from "./report/receipts.js";
 import { halfLife } from "./report/study.js";
 import type { Candidate, Claim, Verdict } from "./model/types.js";
@@ -151,11 +151,48 @@ export function buildProgram(): Command {
           : { status: "empty" as const, record };
       };
 
+      // Spec §10: robots.txt is fetched once per host, through the SAME
+      // HostQueue that paces every other request to that host — a robots
+      // fetch is still a request. This must run as its own top-level
+      // Promise.all BEFORE the per-row queue.run below, never nested inside
+      // it: queue.run for a host serializes onto that host's own tail, so a
+      // nested call for the same host would wait on a slot that is itself
+      // waiting on the nested call — a deadlock. A fetch failure or a
+      // missing/404 robots.txt means allowed; a network blip must never
+      // read as a silent blanket refusal to check.
+      const robotsCache = new Map<string, string>();
+      const hosts = [...new Set(dueRows.map((r) => {
+        try { return new URL(r.sourceUrl).host; } catch { return null; }
+      }).filter((h): h is string => h !== null))];
+      await Promise.all(hosts.map((host) => queue.run(`https://${host}/robots.txt`, async () => {
+        try {
+          const res = await fetch(`https://${host}/robots.txt`);
+          robotsCache.set(host, res.ok ? await res.text() : "");
+        } catch {
+          robotsCache.set(host, "");
+        }
+      })));
+
       // One queue.run per row: it wraps the WHOLE checkAssertion call (which may
       // issue up to two collector runs plus a heal), so every network op for a
       // host stays serialized behind that host's slot. Never call runCollector
       // or healCollector outside this.
       await Promise.all(dueRows.map((row) => queue.run(row.sourceUrl, async () => {
+        let host: string | null = null;
+        let path = "/";
+        try {
+          const u = new URL(row.sourceUrl);
+          host = u.host;
+          path = u.pathname || "/";
+        } catch { /* malformed URL: let collector resolution fail naturally below */ }
+
+        // A claim we declined to check gets no verdict at all — inventing one
+        // would be exactly the kind of lie this project exists to prevent.
+        if (host && !isAllowed(robotsCache.get(host) ?? "", path)) {
+          console.log(`SKIPPED (robots.txt)\t${row.claim_id}\t${row.sourceUrl}`);
+          return;
+        }
+
         const collectorId = resolveCollector(row.sourceUrl);
         const assertion = {
           id: row.id, claimId: row.claim_id, field: row.field, op: row.op,
