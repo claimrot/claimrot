@@ -13,6 +13,16 @@ type Db = Database.Database;
  * not its history. Unlike `renderReceipts`, this is never filtered by
  * verdict — the action needs the full checked set (including HOLDS and
  * UNVERIFIABLE) to report an honest "N checked / M failing" summary.
+ *
+ * The correlated `MAX(created_at)` alone ties whenever two verdicts for the
+ * same claim share a timestamp (two checks in the same tick, or a clock with
+ * coarser resolution than the check cadence) — the join then matches BOTH
+ * rows and this emits two rows for one claim. `verdicts.id` is TEXT
+ * (`${assertionId}:${Date.now()}`, `src/cli.ts`), not a sortable insertion
+ * order, so it cannot break the tie. SQLite still assigns every ordinary
+ * (non-`WITHOUT ROWID`) table an implicit, monotonically increasing `rowid`
+ * regardless of its declared primary key — breaking the tie on `MAX(rowid)`
+ * picks exactly one, the most recently inserted, verdict per claim.
  */
 export function renderVerdictsJson(db: Db): VerdictRecord[] {
   const rows = db.prepare(
@@ -21,6 +31,10 @@ export function renderVerdictsJson(db: Db): VerdictRecord[] {
      JOIN claims c ON c.id = v.claim_id
      WHERE v.created_at = (
        SELECT MAX(v2.created_at) FROM verdicts v2 WHERE v2.claim_id = v.claim_id
+     )
+     AND v.rowid = (
+       SELECT MAX(v3.rowid) FROM verdicts v3
+       WHERE v3.claim_id = v.claim_id AND v3.created_at = v.created_at
      )
      ORDER BY c.id`).all() as VerdictRecord[];
   return rows;

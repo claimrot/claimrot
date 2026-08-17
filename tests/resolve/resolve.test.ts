@@ -111,6 +111,31 @@ describe("resolveCandidates", () => {
     expect(r.chosen!.value).toBe(175);
   });
 
+  it("contains an assertion against retained valueText, not DRIFTED", () => {
+    // Fix 2's scar: parseRawValue used to null out valueText the moment a
+    // number was extracted, and "10:30am" parses to no number but this
+    // exercises the general contract — a candidate carrying text must still
+    // satisfy `contains` even when a numeric assertion is not in play.
+    const departs: Assertion = {
+      ...base, field: "departure_time", op: "contains",
+      valueNum: null, valueText: "10:30am",
+    };
+    const r = resolveCandidates(departs, [c({ value: null, valueText: "Departs 10:30am daily" })]);
+    expect(r).not.toBeNull();
+    expect(r!.verdict).toBe("HOLDS");
+  });
+
+  it("drops a totally blank candidate under op: exists — blindness, never a finding", () => {
+    // Fix 3's scar: isUnparseableNumeric only guarded eq/approx/range. A
+    // blank extraction (value: null, valueText: "") under `exists` sailed
+    // through the label filter and satisfies() convicted it as DRIFTED.
+    const exists: Assertion = {
+      ...base, field: "senior_price", op: "exists", valueNum: null, valueText: null,
+    };
+    const r = resolveCandidates(exists, [c({ value: null, valueText: null })]);
+    expect(r).toBeNull(); // dropped, not resolved — caller must heal
+  });
+
   it("top wins at full confidence when all cleared candidates agree", () => {
     // Table row: ≥2 cleared, all agree → compare top → HOLDS/DRIFTED, full confidence.
     const r = resolveCandidates(base, [

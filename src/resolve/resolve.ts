@@ -40,13 +40,28 @@ function isUnparseableNumeric(a: Assertion, c: ScoredCandidate): boolean {
 }
 
 /**
+ * True when a candidate carries NOTHING — no numeric value and no text
+ * either. That is total blindness, not a finding, regardless of `a.op`. Prior
+ * to this check, only numeric ops (`isUnparseableNumeric` above) dropped an
+ * unparseable candidate; a blank extraction under `op: "exists"` sailed
+ * through the label filter untouched (`c.value !== null || (c.valueText ??
+ * "") !== ""` in `satisfies` reads `null` / `""` as "does not exist") and
+ * `satisfies` convicted it — a confident `DRIFTED` built entirely on our own
+ * inability to read the page.
+ */
+function isBlind(c: ScoredCandidate): boolean {
+  return c.value === null && (c.valueText ?? "") === "";
+}
+
+/**
  * Returns null when no candidate clears the threshold. Null is NOT a negative
  * finding — it means we could not see the value, and the caller must heal
  * before drawing any conclusion (spec §4.5).
  */
 export function resolveCandidates(a: Assertion, cands: Candidate[]): Resolution | null {
   const scored = cands.map((c) => scoreCandidate(a, c)).sort((x, y) => y.score - x.score);
-  const cleared = scored.filter((c) => c.score >= CLEAR_THRESHOLD && !isUnparseableNumeric(a, c));
+  const cleared = scored.filter((c) =>
+    c.score >= CLEAR_THRESHOLD && !isUnparseableNumeric(a, c) && !isBlind(c));
   if (cleared.length === 0) return null;
 
   const [top] = cleared;

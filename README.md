@@ -111,6 +111,32 @@ npm run cli -- --db claimrot.db study
 credential Scraper Studio collectors were created under; only `ingest` needs
 `ANTHROPIC_API_KEY`.
 
+## Continuous integration
+
+`claimrot` ships a GitHub Action (`action/`) that fails a pull request when a
+confident drift finding is present. It consumes the JSON `report --json`
+produces, not any other file in this repo — see the note on `examples/output.json`
+below, which is a record of a past run, not the Action's input format.
+
+```bash
+# In CI, after `check` has run against your own DB:
+npm run cli -- --db claimrot.db report --json > claimrot-verdicts.json
+```
+
+```yaml
+# .github/workflows/claimrot.yml
+- run: npm run cli -- --db claimrot.db report --json > claimrot-verdicts.json
+- uses: claimrot/claimrot@v1
+  with:
+    verdicts: claimrot-verdicts.json
+    confidence-floor: "0.75"
+```
+
+The action (`action/main.ts`) never fails the build on a missing or
+unreadable verdicts file, and never fails it on `UNVERIFIABLE` or
+`AMBIGUOUS` — only a `DRIFTED` or `REMOVED` finding at or above
+`confidence-floor` turns the check red (see `decideExit`).
+
 ## Example output
 
 `examples/` is a **genuine, committed run**, not a fabricated sample. The
@@ -177,7 +203,12 @@ Files:
   structured JSON: claim id, claim text, source, verdict, confidence, and
   timestamp at the top level, plus an `evidence` object nesting the chosen
   candidate, the full contender list, and the reason string — the example
-  structured output the hackathon rules require. Five rows, not four: the
+  structured output the hackathon rules require. **This is a record of that
+  one real run, not the shape the GitHub Action reads** — the Action consumes
+  `report --json`'s flatter `{verdict, confidence, claim, url}` array (see
+  Continuous integration above); running the Action against this file exits
+  oddly (receipts read `- undefined (undefined)`) because it's the wrong
+  shape for that purpose, not because anything is broken. Five rows, not four: the
   "Senior" blindness claim was checked twice (see above), and both real
   attempts are included rather than only keeping the one that reads more
   cleanly.
