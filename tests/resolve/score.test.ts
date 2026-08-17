@@ -16,13 +16,15 @@ const cand = (over: Partial<Candidate>): Candidate => ({
 describe("scoreCandidate", () => {
   it("scores an exact label+context+unit+path match near 1", () => {
     const s = scoreCandidate(assertion, cand({}));
-    // Perfect anchor match scores 0.85: corroboration stays 0 until the engine raises it on second-source agreement.
+    // Perfect anchor match renormalises to 1.0: corroboration is unavailable
+    // at this layer (excluded from both sums) until the engine raises it.
     expect(s.score).toBeGreaterThanOrEqual(0.85);
   });
 
   it("clears the threshold on a label match even when the DOM path moved", () => {
     // A redesign destroys the path. Label carries identity — this must still clear.
-    // This case computes exactly 0.40 + 0.25 + 0.10 = CLEAR_THRESHOLD; guard against IEEE-754 edge cases.
+    // Renormalised over available signals this is 0.75/0.85 ≈ 0.8824, safely
+    // clear of CLEAR_THRESHOLD rather than sitting exactly on it.
     const s = scoreCandidate(assertion, cand({ path: "section>div>span" }));
     expect(s.score).toBeGreaterThan(CLEAR_THRESHOLD - 1e-9);
   });
@@ -32,10 +34,29 @@ describe("scoreCandidate", () => {
     expect(s.score).toBeLessThan(CLEAR_THRESHOLD);
   });
 
-  it("does not let a path match alone clear the threshold", () => {
+  it("scores unit+path agreement below threshold when label and context are both present but wrong", () => {
     // Path is the weakest signal and must never carry a match by itself.
+    // Label and context stay present (not empty) here, so they remain in the
+    // denominator scored at 0 — this is a low-score case, not a floor case.
+    // The floor itself (label unavailable) is covered by the test below.
     const s = scoreCandidate(assertion, cand({ label: "Senior", context: "Other", unit: "AUD" }));
     expect(s.score).toBeLessThan(CLEAR_THRESHOLD);
+  });
+
+  it("refuses to clear on unit+path alone when the anchor is empty", () => {
+    // Ruling 6's renormalisation collapsed the denominator to 0.20 here, letting
+    // the two WEAKEST signals produce a confidence-1.0 verdict. Spec 4.2: path is
+    // never used alone.
+    const anchorless = { ...assertion, anchorLabel: "", anchorContext: "" };
+    const s = scoreCandidate(anchorless, cand({}));
+    expect(s.score).toBe(0);
+  });
+
+  it("KNOWN GAP: a blob label containing the anchor scores as a full match", () => {
+    // Deferred to Task 5's adapter by ruling — scoring cannot separate a blob from
+    // a legitimate qualifier structurally. Documented, not accepted.
+    const s = scoreCandidate(assertion, cand({ label: "Adult Child Senior" }));
+    expect(s.signals.labelSimilarity).toBe(1);
   });
 
   it("ignores the candidate's value entirely when scoring", () => {
@@ -60,7 +81,7 @@ describe("scoreCandidate", () => {
     // real check fall through to heal. Renormalising over available signals is
     // what keeps the monitor able to say anything but "unverifiable".
     const s = scoreCandidate(assertion, cand({ path: "" }));
-    expect(s.score).toBeGreaterThan(CLEAR_THRESHOLD);
+    expect(s.score).toBe(1);
     expect(s.signals.pathStability).toBeNull();
   });
 });

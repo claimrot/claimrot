@@ -63,4 +63,43 @@ describe("resolveCandidates", () => {
     expect(resolveCandidates(range, [c({ value: 175 })])!.verdict).toBe("HOLDS");
     expect(resolveCandidates(range, [c({ value: 220 })])!.verdict).toBe("DRIFTED");
   });
+
+  it("AMBIGUOUS when a THIRD cleared candidate disagrees, even if the top two agree", () => {
+    // Spec §4.3's own sample payload: cleared values [175, 175, 185]. Checking
+    // only the top two for agreement misses the disagreeing third entirely
+    // and would report a confident HOLDS instead of surfacing the conflict.
+    const r = resolveCandidates(base, [
+      c({ value: 175, context: "Ocean Cabin to 30 Sep 2026" }),
+      c({ value: 175, context: "Ocean Cabin" }),
+      c({ value: 185, context: "Ocean Cabin from 1 Oct 2026" }),
+    ])!;
+    expect(r.verdict).toBe("AMBIGUOUS");
+    expect(r.contenders.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("top wins with reduced confidence when disagreement clears the margin", () => {
+    // Table row: ≥2 cleared, values disagree, margin ≥ MARGIN → top wins,
+    // confidence reduced. Top is a full anchor match (score 1.0); the
+    // runner-up clears (context half-matched, path half-matched: 0.7941)
+    // but is separated from top by 0.206 — well past MARGIN (0.15).
+    const r = resolveCandidates(base, [
+      c({ value: 175 }), // full anchor match: score 1.0
+      c({ value: 185, context: "Ocean", path: "div>table>X>Y" }), // clears at ~0.794
+    ])!;
+    expect(r.verdict).toBe("HOLDS");
+    expect(r.chosen!.value).toBe(175);
+    expect(r.confidence).toBeCloseTo(r.chosen!.score * 0.9, 10);
+    expect(r.confidence).toBeLessThan(r.chosen!.score);
+  });
+
+  it("top wins at full confidence when all cleared candidates agree", () => {
+    // Table row: ≥2 cleared, all agree → compare top → HOLDS/DRIFTED, full confidence.
+    const r = resolveCandidates(base, [
+      c({ value: 175, context: "Ocean Cabin" }),
+      c({ value: 175, context: "Ocean Cabin to 30 Sep 2026" }),
+    ])!;
+    expect(r.verdict).toBe("HOLDS");
+    expect(r.contenders.length).toBeGreaterThanOrEqual(2);
+    expect(r.confidence).toBe(r.chosen!.score);
+  });
 });

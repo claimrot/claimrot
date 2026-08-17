@@ -35,9 +35,18 @@ export function resolveCandidates(a: Assertion, cands: Candidate[]): Resolution 
   const cleared = scored.filter((c) => c.score >= CLEAR_THRESHOLD);
   if (cleared.length === 0) return null;
 
-  const [top, second] = cleared;
-  const disagree = second !== undefined && !sameValue(top, second);
-  const margin = second === undefined ? 1 : top.score - second.score;
+  const [top] = cleared;
+  // Agreement must span EVERY cleared candidate, not just the runner-up.
+  // With cleared values [175, 175, 185] (spec §4.3's own sample payload),
+  // checking only the top two misses the disagreeing third and reports a
+  // confident HOLDS instead of surfacing the conflict.
+  const disagreeing = cleared.filter((c) => !sameValue(top, c));
+  const disagree = disagreeing.length > 0;
+  // cleared is sorted by score descending, so disagreeing[0] is the
+  // highest-scoring candidate that disagrees with top — margin is measured
+  // against IT, not simply against cleared[1].
+  const topDisagreeing = disagreeing[0];
+  const margin = topDisagreeing === undefined ? 1 : top.score - topDisagreeing.score;
 
   if (disagree && margin < MARGIN) {
     return {
@@ -45,7 +54,7 @@ export function resolveCandidates(a: Assertion, cands: Candidate[]): Resolution 
       confidence: top.score,
       chosen: null,
       contenders: cleared,
-      reason: `${cleared.length} candidates cleared with disagreeing values and only ${margin.toFixed(2)} separating the top two`,
+      reason: `${cleared.length} candidates cleared with disagreeing values and only ${margin.toFixed(2)} separating the top from the nearest disagreement`,
     };
   }
 

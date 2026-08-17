@@ -51,6 +51,13 @@ function pathStability(anchor: string, actual: string): number {
  * numerator and denominator, so the score renormalises over whatever
  * evidence actually exists instead of being capped by evidence we never had
  * a chance to collect (probe A, 2026-08-17).
+ *
+ * Renormalising alone opens a hole: with both anchorLabel and anchorContext
+ * empty, the denominator can collapse to unit+path (0.20), letting the two
+ * WEAKEST signals alone produce a confidence-1.0 match. Spec §4.2: path is
+ * never used alone. So a score is only ever non-zero when labelSimilarity is
+ * available AND the available weights total at least 0.5 — otherwise there
+ * isn't enough evidence to convict, full stop (ruling 6 follow-up).
  */
 export function scoreCandidate(a: Assertion, c: Candidate): ScoredCandidate {
   const signals: ScoredCandidate["signals"] = {
@@ -71,7 +78,8 @@ export function scoreCandidate(a: Assertion, c: Candidate): ScoredCandidate {
     weightedSum += W[k] * s;
     weightTotal += W[k];
   }
-  const score = weightTotal === 0 ? 0 : weightedSum / weightTotal;
+  const hasFloor = signals.labelSimilarity !== null && weightTotal >= 0.5;
+  const score = hasFloor && weightTotal > 0 ? weightedSum / weightTotal : 0;
 
   return { ...c, score, signals };
 }
