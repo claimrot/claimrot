@@ -45,7 +45,10 @@ candidate is the right one.
 
 Self-healing extraction isn't a performance feature here — it's what makes a
 *negative* result believable at all. The reference corpus behind this project
-spans 352 distinct hosts (docs/design.md §9); a monitor that can't tell "this
+(2,572 claims, 942 source URLs, 352 distinct hosts — docs/design.md §9) lives
+in a separate content repository as one fact-pack JSON file per guide and
+ships with none of this repository; `ingest` expects you to point it at your
+own `*.facts.json` files. A monitor that can't tell "this
 page redesigned and our collector went blind" apart from "this fact was
 genuinely removed" produces a false `REMOVED` on every redesign across that
 whole tail, and a monitor whose negatives can't be trusted is worse than no
@@ -89,7 +92,8 @@ npm run cli -- --db claimrot.db ingest 'path/to/*.facts.json'
 
 # Run the engine: fetch each due claim's source via its collector, resolve
 # candidates against the stored anchor, heal on blindness, record a verdict.
-# No model calls happen here — this step is a fraction of a cent per check.
+# No model calls happen here — every check after ingest is a deterministic
+# comparison against a structured record, not a fresh model call.
 npm run cli -- --db claimrot.db check
 
 # Print drift receipts (defaults to DRIFTED; pass --verdict to filter).
@@ -133,6 +137,15 @@ Anthropic API key, so it exercises every stage of the pipeline except one:
   blindness branch: no candidate anchored on "Senior" because the page has no
   senior price, which correctly triggered a heal call to the live collector
   rather than an immediate negative.
+- **Why this ran through a driver script and not `claimrot check` itself:**
+  `src/collect/registry.ts`'s entries are placeholder collector IDs (e.g.
+  `c_whalewatch`) waiting to be filled in from each host's own
+  `bdata scraper create` output — `whalewatch.co.nz` hasn't been provisioned
+  that way yet, only the separate collector the probe created
+  (`c_msx2l16bsipcs0zz`) has. So `examples/produce-output.ts` calls the real,
+  unmodified `checkAssertion` engine (`src/engine/check.ts`) directly with
+  that real collector ID, rather than going through `claimrot check`, which
+  would have resolved the placeholder and failed. See Limitations.
 - **What the heal call itself showed:** an earlier heal in this same session
   was interrupted locally by a client-side timeout while still running on
   Bright Data's servers, which then held the collector locked
@@ -158,14 +171,17 @@ Files:
   — not committed, since the repo's `.gitignore` excludes all `*.db` files;
   `output.json` below is that database's verdicts table, exported.
 - `examples/output.json` — the verdict rows from `demo.db`, exported as
-  structured JSON (claim id, claim text, source, verdict, confidence,
-  timestamp, chosen candidate, contenders, reason) — the example structured
-  output the hackathon rules require. Five rows, not four: the "Senior"
-  blindness claim was checked twice (see above), and both real attempts are
-  included rather than only keeping the one that reads more cleanly.
-- `examples/report.txt` — the unedited stdout of the real `report` CLI
-  command against `demo.db`, run once per verdict present in it
-  (`--verdict DRIFTED`, `--verdict HOLDS`, `--verdict UNVERIFIABLE`).
+  structured JSON: claim id, claim text, source, verdict, confidence, and
+  timestamp at the top level, plus an `evidence` object nesting the chosen
+  candidate, the full contender list, and the reason string — the example
+  structured output the hackathon rules require. Five rows, not four: the
+  "Senior" blindness claim was checked twice (see above), and both real
+  attempts are included rather than only keeping the one that reads more
+  cleanly.
+- `examples/report.txt` — the real stdout of the `report` CLI command
+  against `demo.db`, with the invoking commands shown, run once per verdict
+  present in it (`--verdict DRIFTED`, `--verdict HOLDS`,
+  `--verdict UNVERIFIABLE`).
 - `examples/heal-attempts.log` — the raw transcript of the heal lock above,
   for anyone who wants to see the actual failure rather than take the summary
   on faith.
@@ -194,12 +210,21 @@ Files:
   The corpus carries exactly one source per claim, so there is nothing for a
   claim to disagree with itself about yet. The scoring and resolution code
   has no path that could currently produce it.
-- **The generic JSON-LD collector (`src/collect/generic.ts`) handles
-  `offers`, and unwraps `@graph`-wrapped nodes (common from WordPress/Yoast
-  sites)**, but its coverage is not exhaustive — it does not attempt
-  microdata, RDFa, or every schema.org type a commerce page might use. It is
-  the fallback for the unmatched tail of hosts, not a general schema.org
-  parser.
+- **`src/collect/registry.ts`'s per-host collector IDs are placeholders**
+  (`c_fareharbor`, `c_realnz`, `c_whalewatch`, and so on) waiting to be
+  filled in from each host's own `bdata scraper create` run — none of them
+  are real Bright Data collector IDs yet on this machine. So `check` today
+  resolves candidates for real only on hosts you've actually provisioned,
+  plus the unmatched tail, which falls to the generic collector below.
+- **The generic JSON-LD collector (`src/collect/generic.ts`, wired into
+  `check` via `runGeneric` in `src/cli.ts`) handles `offers`, and unwraps
+  `@graph`-wrapped nodes (common from WordPress/Yoast sites)**, but its
+  coverage is not exhaustive — it does not attempt microdata, RDFa, or every
+  schema.org type a commerce page might use. It is the fallback for the
+  unmatched tail of hosts (the majority case, since per-host collectors
+  above are still placeholders), not a general schema.org parser. A fetch
+  failure here always reports `error`, never `empty` — see
+  `tests/cli.test.ts`'s "generic collector fallback" tests.
 - **Scraper Studio itself under-collects prose-embedded values.** The probe
   (`docs/probes/2026-08-17-scraper-studio.md`, Probe A) found that even an
   explicit "every price on the page, as a list" prompt missed a second Adult

@@ -6,6 +6,7 @@ import { readFactPack } from "./ingest/factpack.js";
 import { normalizeClaim } from "./ingest/normalize.js";
 import { resolveCollector } from "./collect/registry.js";
 import { runCollector, healCollector, flagBlobCandidates } from "./collect/studio.js";
+import { extractJsonLdCandidates } from "./collect/generic.js";
 import { checkAssertion } from "./engine/check.js";
 import type { EngineDeps } from "./engine/check.js";
 import { nextCheckAt } from "./engine/schedule.js";
@@ -13,7 +14,7 @@ import { HostQueue, isAllowed } from "./net/politeness.js";
 import { renderReceipts } from "./report/receipts.js";
 import { halfLife } from "./report/study.js";
 import type { Candidate, Claim, Verdict } from "./model/types.js";
-import type { CollectRunResult } from "./collect/types.js";
+import type { CollectorRecord, CollectRunResult } from "./collect/types.js";
 import type Database from "better-sqlite3";
 type Db = Database.Database;
 
@@ -50,6 +51,51 @@ export async function fetchRobots(
     return res.ok ? await res.text() : "";
   } catch {
     return "";
+  }
+}
+
+// registry.ts's fallback for every unmatched host (spec §7: the 352-host
+// tail this whole pitch rests on) returns this literal string, not a real
+// Bright Data collector ID — there is no collector called "generic". It must
+// be intercepted before it ever reaches runCollector/healCollector, or every
+// unmatched host silently resolves UNVERIFIABLE forever.
+export const GENERIC_COLLECTOR_ID = "generic";
+
+export function isGenericCollector(collectorId: string): boolean {
+  return collectorId === GENERIC_COLLECTOR_ID;
+}
+
+/**
+ * The unmatched tail (46 of our hosts appear exactly once, design doc §9) has
+ * no bespoke collector, so this fetches the page directly and reads
+ * schema.org JSON-LD (spec §7: this is the collector that heals most often,
+ * precisely because it is the least specific).
+ *
+ * A fetch failure or non-2xx response must report `error`, never `empty` —
+ * `empty` feeds the engine's blindness/heal/REMOVED path, and a network blip
+ * is OUR eyesight failing, never evidence that the page's value is gone.
+ * `fetchImpl` defaults to global fetch and exists purely so a test can
+ * inject a fake, the same pattern as `fetchRobots` above and `Exec` in
+ * collect/studio.ts.
+ */
+export async function runGeneric(
+  url: string, field: string, fetchImpl: typeof fetch = fetch,
+): Promise<CollectRunResult> {
+  try {
+    const res = await fetchImpl(url, {
+      headers: { "user-agent": ROBOTS_UA },
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!res.ok) return { status: "error", error: `HTTP ${res.status}` };
+
+    const candidates = extractJsonLdCandidates(await res.text(), field);
+    const record: CollectorRecord = {
+      url, fetchedAt: new Date().toISOString(), collectorVersion: GENERIC_COLLECTOR_ID,
+      pageSignature: "", fields: candidates.length ? { [field]: candidates } : {},
+    };
+    return candidates.length ? { status: "ok", record } : { status: "empty", record };
+  } catch (e) {
+    return { status: "error", error: e instanceof Error ? e.message : String(e) };
   }
 }
 
@@ -166,9 +212,14 @@ export function buildProgram(): Command {
       // Wraps the plain collector run so every "ok" record is screened through
       // flagBlobCandidates before checkAssertion ever sees it. A field that is
       // emptied entirely by screening reports "empty", which correctly routes to
-      // heal rather than a false verdict.
-      const wrapRun = (anchors: string[]): EngineDeps["run"] => async (id, url) => {
-        const result: CollectRunResult = await runCollector(id, url);
+      // heal rather than a false verdict. A "generic" collector ID (registry.ts's
+      // fallback for the unmatched tail) is intercepted here and routed to a
+      // direct fetch + JSON-LD read instead of the Bright Data CLI — there is no
+      // Bright Data collector actually named "generic".
+      const wrapRun = (anchors: string[], field: string): EngineDeps["run"] => async (id, url) => {
+        const result: CollectRunResult = isGenericCollector(id)
+          ? await runGeneric(url, field)
+          : await runCollector(id, url);
         if (result.status !== "ok") return result;
 
         const fields: Record<string, Candidate[]> = {};
@@ -228,7 +279,7 @@ export function buildProgram(): Command {
         };
         const anchors = anchorsForUrl(row.sourceUrl);
         const resolution = await checkAssertion(assertion, collectorId, row.sourceUrl, {
-          run: wrapRun(anchors),
+          run: wrapRun(anchors, row.field),
           heal: (id, prompt, url) => healCollector(id, prompt, { url, autoApprove: true }),
         });
         const checkedAt = new Date().toISOString();

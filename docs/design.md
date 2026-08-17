@@ -360,12 +360,12 @@ can read the whole thing in one sitting.
 
 ## 16. Submission checklist
 
-- [ ] Public repository
-- [ ] README explaining the problem, the workflow, and **how Scraper Studio is central**
-- [ ] Example structured output committed
+- [ ] Public repository (not verified by Task 14 — repo visibility is outside this task's scope)
+- [x] README explaining the problem, the workflow, and **how Scraper Studio is central**
+- [x] Example structured output committed (`examples/output.json`, a genuine run — see README's Example output section for exactly what it did and did not exercise)
 - [ ] Demo video
-- [ ] AI-assistance disclosure (required by the rules)
-- [ ] Public-data-only statement
+- [x] AI-assistance disclosure (required by the rules)
+- [x] Public-data-only statement
 
 ## 17. Open questions
 

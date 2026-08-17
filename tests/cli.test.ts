@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { buildProgram, UPDATE_LAST_CHECKED_SQL, repeatAmbiguousClaims, fetchRobots, ROBOTS_UA } from "../src/cli.js";
+import {
+  buildProgram, UPDATE_LAST_CHECKED_SQL, repeatAmbiguousClaims, fetchRobots, ROBOTS_UA,
+  runGeneric, isGenericCollector, GENERIC_COLLECTOR_ID,
+} from "../src/cli.js";
 import { openDb } from "../src/db/index.js";
 
 describe("cli", () => {
@@ -56,6 +59,63 @@ describe("fetchRobots", () => {
     const fakeFetch = async () => { throw new Error("timeout"); };
     const text = await fetchRobots("x.example", fakeFetch as unknown as typeof fetch);
     expect(text).toBe("");
+  });
+});
+
+describe("generic collector fallback", () => {
+  // registry.ts's fallback for the unmatched 352-host tail returns the literal
+  // string "generic", which is not a real Bright Data collector ID. This must
+  // route to a direct fetch + JSON-LD read, never to `bdata scraper run`.
+  it("routes a 'generic' collector ID to the JSON-LD path", () => {
+    expect(isGenericCollector(GENERIC_COLLECTOR_ID)).toBe(true);
+    expect(isGenericCollector("c_whalewatch")).toBe(false);
+  });
+
+  it("runGeneric extracts JSON-LD via a direct, identified fetch rather than shelling out", async () => {
+    const html = `<script type="application/ld+json">
+      {"@type":"Product","name":"Adult","offers":{"price":175,"priceCurrency":"NZD"}}
+    </script>`;
+    const seenInit: RequestInit[] = [];
+    const fakeFetch = async (_u: string | URL | Request, init?: RequestInit) => {
+      seenInit.push(init ?? {});
+      return new Response(html, { status: 200 });
+    };
+    const result = await runGeneric(
+      "https://x.example/tour", "adult_price", fakeFetch as unknown as typeof fetch,
+    );
+    expect(result.status).toBe("ok");
+    if (result.status === "ok") {
+      expect(result.record.fields.adult_price[0].value).toBe(175);
+      expect(result.record.collectorVersion).toBe(GENERIC_COLLECTOR_ID);
+    }
+    // Identified, per spec §10 — same requirement as fetchRobots above.
+    const headers = seenInit[0].headers as Record<string, string>;
+    expect(headers["user-agent"]).toMatch(/claimrot/);
+  });
+
+  it("a page with no JSON-LD offers is a genuine empty, not an error", async () => {
+    const fakeFetch = async () => new Response("<html><body>no offers here</body></html>", { status: 200 });
+    const result = await runGeneric(
+      "https://x.example/tour", "adult_price", fakeFetch as unknown as typeof fetch,
+    );
+    expect(result.status).toBe("empty");
+  });
+
+  it("a fetch failure is OUR blindness (error), never evidence the value is gone (empty)", async () => {
+    // Getting this backwards would let a network blip report as a deleted claim.
+    const fakeFetch = async () => { throw new Error("network blip"); };
+    const result = await runGeneric(
+      "https://x.example/tour", "adult_price", fakeFetch as unknown as typeof fetch,
+    );
+    expect(result.status).toBe("error");
+  });
+
+  it("a non-2xx response is also 'error', not 'empty'", async () => {
+    const fakeFetch = async () => new Response("", { status: 503 });
+    const result = await runGeneric(
+      "https://x.example/tour", "adult_price", fakeFetch as unknown as typeof fetch,
+    );
+    expect(result.status).toBe("error");
   });
 });
 
