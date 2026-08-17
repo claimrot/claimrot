@@ -11,11 +11,15 @@ export function nextCheckAt(
     return plus(now, backoff);
   }
 
-  // A claim that announces its own death gets checked the day before it dies.
   if (claim.expiresAt) {
     const expiry = new Date(claim.expiresAt);
     const eve = new Date(expiry.getTime() - DAY);
+    const morningAfter = new Date(expiry.getTime() + DAY);
+    // Before the change: confirm the old value still holds.
     if (eve > now) return eve;
+    // After the change: catch the new one, rather than waiting out the cadence.
+    if (morningAfter > now) return morningAfter;
+    // Expiry is fully behind us — the claim is ordinary again.
   }
 
   return plus(now, claim.volatile ? 7 : 90);
