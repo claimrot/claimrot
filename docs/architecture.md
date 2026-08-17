@@ -52,12 +52,50 @@ only a *working* scraper that still finds nothing may say `REMOVED`.
 | clean | differs | `DRIFTED` |
 | clean | two readings, both defensible | `AMBIGUOUS` |
 | nothing | — | heal, then re-run |
-| nothing after a successful heal | — | `REMOVED` |
+| nothing after a heal, but the anchor resolves on a successor page | matches | `MOVED` |
+| nothing after a heal, but the anchor resolves on a successor page | differs | `DRIFTED` |
+| nothing after a heal, and nowhere else on the host | — | `REMOVED` |
 | heal failed or is awaiting approval | — | `UNVERIFIABLE` |
 
 `src/engine/check.ts` is the only file allowed to reach those last three. A test
 sweeps every combination of extraction failure and heal outcome and asserts that
 none of them can produce `DRIFTED`.
+
+## Moved, not deleted
+
+A value that vanished from the page it was cited on has not necessarily gone
+anywhere — operators split pricing onto its own page all the time. Reporting
+that as `REMOVED` is the same class of error as reporting a redesign as a
+deletion, one level up.
+
+So before `REMOVED`, `src/collect/successor.ts` proposes successor pages from
+signals the **site itself** publishes: links on the cited page first, then the
+host's `sitemap.xml` only if those yield nothing. Each candidate is then
+verified by a real collector run and scored against the same anchor as every
+other verdict. Discovery decides where to look; scoring still decides what is
+true.
+
+Three properties make this safe rather than a crawler:
+
+- **Same host, always**, and robots-checked per successor, not just for the
+  cited page. A cross-host successor would escape both the permission we hold
+  and the queue we are standing in.
+- **Paced request by request.** `HostQueue` spaces queue *slots*, not the
+  requests inside one — and relocation adds several. Each is held behind an
+  explicit `MIN_HOST_INTERVAL_MS` wait, so a relocation cannot burst ten
+  requests at a host behind one slot's spacing. A test asserts the strict
+  alternation of wait and fetch, because this is exactly the kind of guarantee
+  that rots silently.
+- **Bounded.** At most `MAX_SUCCESSORS` (5) pages are tried, and anything
+  dropped by that cap is logged — a capped search must never read as an
+  exhaustive one.
+- **Not a value search.** A candidate page carrying the right number under the
+  wrong label is rejected, exactly as it would be on the original page.
+
+`MOVED` means the prose is still true and the citation is stale; the receipt
+carries `foundAt`, which is the URL to change it to. If the relocated value
+*also* differs, the verdict stays `DRIFTED` — a false claim is the more serious
+finding — and `foundAt` records the move alongside it.
 
 ## Anchors, not values
 

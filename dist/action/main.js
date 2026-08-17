@@ -1,11 +1,18 @@
 import { appendFileSync, readFileSync } from "node:fs";
+/** Verdicts that mean a human has to edit the document. */
+const FAILING = new Set(["DRIFTED", "REMOVED", "MOVED"]);
 function isFailingFinding(v, floor) {
-    return (v.verdict === "DRIFTED" || v.verdict === "REMOVED") && v.confidence >= floor;
+    return FAILING.has(v.verdict) && v.confidence >= floor;
 }
 /**
  * UNVERIFIABLE and AMBIGUOUS never fail a build. A monitor whose negatives are
  * untrustworthy gets switched off within a fortnight, and then it protects
- * nobody. Only a confident DRIFTED or REMOVED is worth a red check.
+ * nobody.
+ *
+ * MOVED fails alongside DRIFTED and REMOVED. The claim is still true, so this
+ * is the mildest of the three, but the citation now points at a page that does
+ * not support it — and unlike the others the fix is already in the receipt,
+ * which names the URL to change it to.
  */
 export function decideExit(verdicts, floor) {
     const failing = verdicts.filter((v) => isFailingFinding(v, floor));

@@ -13,10 +13,11 @@ import { normalizeClaim } from "./ingest/normalize.js";
 import { resolveCollector, GENERIC_COLLECTOR_ID, isGenericCollector } from "./collect/registry.js";
 import { runCollector, healCollector, withBlobScreening } from "./collect/studio.js";
 import { runGeneric } from "./collect/generic.js";
+import { discoverSuccessors } from "./collect/successor.js";
 import { checkAssertion } from "./engine/check.js";
 import type { EngineDeps } from "./engine/check.js";
 import { nextCheckAt } from "./engine/schedule.js";
-import { HostQueue, isAllowed, ROBOTS_UA } from "./net/politeness.js";
+import { HostQueue, isAllowed, ROBOTS_UA, sleep, MIN_HOST_INTERVAL_MS } from "./net/politeness.js";
 import { safeUrl } from "./url.js";
 import { renderReceipts, renderVerdictsJson } from "./report/receipts.js";
 import { halfLife } from "./report/study.js";
@@ -185,9 +186,21 @@ function runOneCheck(row: DueAssertionRow, queue: HostQueue, ctx: CheckContext):
     const collectorId = resolveCollector(row.sourceUrl);
     const assertion = rowToAssertion(row);
     const anchors = anchorsForUrl(ctx.db, row.sourceUrl);
+    const robotsTxt = host ? ctx.robotsCache.get(host) ?? "" : "";
     const resolution = await checkAssertion(assertion, collectorId, row.sourceUrl, {
       run: buildWrapRun(row.field, anchors),
       heal: (id, prompt, url) => healCollector(id, prompt, { url, autoApprove: true }),
+      // Same host, same queue slot, same robots.txt we already fetched — so
+      // relocation cannot outrun the pacing this claim was admitted under.
+      // `pace` is what actually holds it to that: HostQueue spaces slots, and
+      // relocation adds several requests INSIDE one.
+      pace: () => sleep(MIN_HOST_INTERVAL_MS),
+      successors: (url, a) => discoverSuccessors(url, a, {
+        isAllowedPath: (p) => isAllowed(robotsTxt, p),
+        pace: () => sleep(MIN_HOST_INTERVAL_MS),
+        onDropped: (n) =>
+          console.log(`NOTE\t${row.claim_id}\tsuccessor search capped: ${n} lower-ranked candidate(s) not tried`),
+      }),
     });
     const checkedAt = new Date().toISOString();
     ctx.insVerdict.run(`${row.id}:${Date.now()}`, "", row.claim_id, resolution.verdict,

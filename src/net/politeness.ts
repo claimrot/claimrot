@@ -16,10 +16,16 @@ export const ROBOTS_UA = "claimrot/0.1 (+https://github.com/claimrot/claimrot)";
  * Parallelism is ACROSS hosts only. A monitor that hammers 352 hosts is a DDoS
  * with a cron; we have taken a partner's production host down this way before.
  */
+/** ~0.8 req/s. The spacing every per-host request is held to, in or out of a queue slot. */
+export const MIN_HOST_INTERVAL_MS = 1250;
+
+/** Resolves after `ms`. Used to pace extra requests a single queue slot makes. */
+export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
 export class HostQueue {
   private tails = new Map<string, Promise<unknown>>();
 
-  constructor(private readonly minIntervalMs = 1250) {}
+  constructor(private readonly minIntervalMs = MIN_HOST_INTERVAL_MS) {}
 
   run<T>(url: string, fn: () => Promise<T>): Promise<T> {
     const parsed = safeUrl(url);

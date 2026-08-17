@@ -64,6 +64,9 @@ export function renderReceipts(db: Db, verdict: Verdict): string {
       `${r.verdict}  (confidence ${r.confidence.toFixed(2)}, checked ${r.ranAt.slice(0, 10)})`,
       `  published: ${r.text.slice(0, 200)}`,
       `  source:    ${r.url}`,
+      // Only a relocated anchor carries foundAt, and when it does it IS the
+      // fix — the line to paste back into the document.
+      ...(e.foundAt ? [`  now at:    ${e.foundAt}`] : []),
       `  now:       ${e.chosen ? `"${e.chosen.label}" = ${e.chosen.value ?? e.chosen.valueText}` : "-"}`,
       `  why:       ${e.reason}`,
     ].join("\n");

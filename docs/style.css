@@ -195,9 +195,9 @@ dt {
 }
 dd { margin: 0; }
 
-/* The third verdict is the one nobody else has, so it is the one that is
-   drawn rather than filled — an outline, because it marks an absence. */
-.verdicts .third dt {
+/* The verdict nobody else has is the one drawn rather than filled — an
+   outline, because it marks an absence. */
+.verdicts .absence dt {
   display: inline-block;
   border: 1px dashed var(--muted);
   padding: 0.3rem 0.5rem;

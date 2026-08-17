@@ -56,16 +56,19 @@ Most monitors compare a page to its last snapshot and answer *same* or
 price, a selector stops matching — and then a two-answer system tells you the
 operator deleted something they didn't.
 
-claimrot has a third answer.
+claimrot has more than two answers.
 
 - `HOLDS` — the source still says what you published.
 - `DRIFTED` — it changed. Here's the old value, the new one, and the URL.
+- `MOVED` — still true, but not where you cited it. Here's the new URL.
 - `UNVERIFIABLE` — we couldn't read it, and we won't guess.
 
 Finding nothing never produces a verdict. It asks Bright Data Scraper Studio to
-repair the scraper, runs it again, and only reports `REMOVED` if a working
-scraper still finds nothing. Self-healing isn't what makes this fast; it's what
-makes a negative worth believing.
+repair the scraper, runs it again, and — if a working scraper still sees
+nothing — looks for the value elsewhere on the same site before concluding
+anything. Only when a healed scraper finds it nowhere does claimrot say
+`REMOVED`. Self-healing isn't what makes this fast; it's what makes a negative
+worth believing.
 
 The other half is that an assertion stores *"whatever sits beside the label
 Adult"*, not *"175"*. An operator's NZ$59 was once the adult fare and is now the
@@ -99,6 +102,10 @@ scraper broke gets turned off within a fortnight, and then it protects nobody.
 - **Checks run per claim, not per page.** A page cited by three claims is fetched
   three times — roughly 2.7× the requests the corpus needs. Fixing it means
   reworking the loop that per-host pacing is built around, so it waited.
+- **Relocation only follows the site's own signals.** When a value vanishes,
+  claimrot looks for it via links on the cited page and the host's
+  `sitemap.xml`, on that host only, and stops after five candidates. A value
+  that moved somewhere neither points to still reports as `REMOVED`.
 - **The generic fallback can detect blindness but not repair it.** Healing needs
   a real Scraper Studio collector, so self-repair covers hosts you've
   provisioned one for; everything else degrades to `UNVERIFIABLE`.

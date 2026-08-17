@@ -10,6 +10,19 @@ export interface EngineDeps {
   run: (collectorId: string, url: string) => Promise<CollectRunResult>;
   /** prompt describes WHAT WE WENT BLIND TO; the CLI anchors heals on prose, not URLs. */
   heal: (collectorId: string, prompt: string, url: string) => Promise<HealResult>;
+  /**
+   * Optional. Proposes same-host successor pages when the anchor has vanished
+   * from the cited URL. Omitted (as in most tests) the engine falls straight
+   * through to REMOVED, which is exactly the pre-successor behaviour.
+   */
+  successors?: (url: string, a: Assertion) => Promise<{ url: string; why: string }[]>;
+  /**
+   * Awaited before each successor collector run. HostQueue spaces queue slots,
+   * not the requests within one, and relocation can add several — so without
+   * this a single slot bursts at one host. Omitted, relocation runs unpaced,
+   * which is correct only for tests.
+   */
+  pace?: () => Promise<void>;
 }
 
 const unverifiable = (reason: string): Resolution =>
@@ -101,6 +114,12 @@ export async function checkAssertion(
   const resolved = resolveCandidates(a, candidatesFor(second.record, a.field));
   if (resolved) return resolved;
 
+  // Blind at the cited URL even after healing. Before calling it gone, ask
+  // whether it merely moved: a value that is alive one page over is a stale
+  // citation, not a deleted fact, and the two need different fixes.
+  const relocated = await findRelocated(a, collectorId, url, deps);
+  if (relocated) return relocated;
+
   return {
     verdict: "REMOVED",
     confidence: REMOVED_AFTER_HEAL_CONFIDENCE,
@@ -108,4 +127,46 @@ export async function checkAssertion(
     contenders: [],
     reason: `a healed collector (${heal.collectorVersion}) still finds no candidate anchored to "${a.anchorLabel}"`,
   };
+}
+
+/**
+ * Walks candidate successor pages in rank order and returns the first on which
+ * the anchor actually resolves. Nothing here trusts the discovery heuristic:
+ * a proposed URL only becomes a verdict once a real collector run on that page
+ * produces a candidate that clears the same anchor scoring every other verdict
+ * clears. Discovery picks where to look; scoring still decides.
+ *
+ * The verdict distinguishes the two outcomes a move can have. Same value at a
+ * new URL is MOVED — your prose is right and your link is stale. A different
+ * value at a new URL is still DRIFTED, because the claim is now false and that
+ * is the more serious of the two; `foundAt` records the move either way.
+ */
+async function findRelocated(
+  a: Assertion, collectorId: string, citedUrl: string, deps: EngineDeps,
+): Promise<Resolution | null> {
+  if (!deps.successors) return null;
+
+  const candidates = await deps.successors(citedUrl, a);
+  for (const candidate of candidates) {
+    await deps.pace?.();
+    const run = await deps.run(collectorId, candidate.url);
+    if (run.status !== "ok") continue;
+
+    const resolved = resolveCandidates(a, candidatesFor(run.record, a.field));
+    if (!resolved) continue;
+    // AMBIGUOUS/CONFLICT on a page we only guessed at is not evidence of a
+    // move; it is a reason to keep looking, and then to say nothing.
+    if (resolved.verdict !== "HOLDS" && resolved.verdict !== "DRIFTED") continue;
+
+    const moved = resolved.verdict === "HOLDS";
+    return {
+      ...resolved,
+      verdict: moved ? "MOVED" : "DRIFTED",
+      foundAt: candidate.url,
+      reason: moved
+        ? `gone from the cited page; "${a.anchorLabel}" now resolves at ${candidate.url} (${candidate.why}) with the published value intact`
+        : `gone from the cited page AND changed: ${resolved.reason}, now at ${candidate.url} (${candidate.why})`,
+    };
+  }
+  return null;
 }

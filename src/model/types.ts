@@ -5,6 +5,7 @@ export type Verdict =
   | "DRIFTED"
   | "AMBIGUOUS"
   | "CONFLICT"
+  | "MOVED"
   | "REMOVED"
   | "UNVERIFIABLE";
 
@@ -62,6 +63,12 @@ export interface Resolution {
   chosen: ScoredCandidate | null;
   contenders: ScoredCandidate[];
   reason: string;
+  /**
+   * Set only when the anchor was found somewhere other than the cited URL.
+   * The cited URL stays on the claim — this records where the value actually
+   * lives now, so a MOVED receipt can tell you what to change the citation to.
+   */
+  foundAt?: string;
 }
 
 /**

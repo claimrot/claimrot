@@ -72,14 +72,14 @@
 </section>
 
 <section class="band">
-  <h2>Three answers, not two</h2>
+  <h2>Four answers, not two</h2>
   <p>
     Most monitors diff a page against its last snapshot and tell you
     <em>same</em> or <em>changed</em>. That works until the checker itself goes
     blind. A redesign moves the price, a selector stops matching, and a
     two-answer system confidently reports that the operator deleted it.
   </p>
-  <p>That is the failure claimrot exists to avoid, so it has a third answer.</p>
+  <p>That is the failure claimrot exists to avoid, so it refuses to answer with only two.</p>
 
   <dl class="verdicts">
     <div>
@@ -90,7 +90,11 @@
       <dt class="v-drift">DRIFTED</dt>
       <dd>The value changed. You get the old one, the new one, and the URL.</dd>
     </div>
-    <div class="third">
+    <div>
+      <dt class="v-drift">MOVED</dt>
+      <dd>Still true, but not where you cited it. You get the new URL.</dd>
+    </div>
+    <div class="absence">
       <dt class="v-unver">UNVERIFIABLE</dt>
       <dd>We could not read it, and we will not guess.</dd>
     </div>
@@ -99,9 +103,11 @@
   <p class="aside">
     When extraction comes back empty, claimrot does not conclude the value is
     gone. It asks Bright Data Scraper Studio to repair the scraper, runs it
-    again, and only reports <code>REMOVED</code> if a <em>working</em> scraper
-    still finds nothing. Healing is not what makes it fast. It is what makes a
-    negative believable.
+    again, and then looks for the value elsewhere on the same site &mdash;
+    following the site&rsquo;s own links and sitemap, never a search engine and
+    never another host. Only when a <em>working</em> scraper finds it nowhere
+    does it report <code>REMOVED</code>. Healing is not what makes it fast. It
+    is what makes a negative believable.
   </p>
 </section>
 
@@ -130,7 +136,8 @@
       <p>
         Finding nothing is not evidence of absence &mdash; it is a statement
         about our own eyesight. So an empty result triggers a repair of the
-        scraper, not a verdict.
+        scraper, and then a look one page over, before it is allowed to become
+        a verdict.
       </p>
     </li>
     <li>
@@ -190,6 +197,11 @@ npm run cli -- report</code></pre>
     <li>
       Claims are checked one at a time rather than one fetch per page, so a page
       cited by several claims is fetched several times.
+    </li>
+    <li>
+      Relocation searches the cited page&rsquo;s own links and the host&rsquo;s
+      sitemap, and stops after five candidates. A value moved somewhere neither
+      of those points to still reads as <code>REMOVED</code>.
     </li>
     <li>
       It verifies a claim against <em>the source it cites</em>. It has no opinion

@@ -25,6 +25,9 @@ export function halfLife(db: Db) {
       const age = (new Date(r.ranAt).getTime() - new Date(r.checkedAt).getTime()) / 86_400_000;
       return age <= maxAgeDays && r.verdict !== "UNVERIFIABLE";
     });
+    // MOVED is deliberately excluded. This measures how fast cited claims stop
+    // being TRUE; a relocated value is still true, and counting it would
+    // inflate the decay rate with what is really citation rot.
     const drifted = inBucket.filter((r) => r.verdict === "DRIFTED" || r.verdict === "REMOVED").length;
     return {
       maxAgeDays,
