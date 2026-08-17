@@ -4,11 +4,11 @@ export const CLEAR_THRESHOLD = 0.75;
 export const MARGIN = 0.15;
 
 const W = {
-  labelSimilarity: 0.46,
+  labelSimilarity: 0.4,
   contextSimilarity: 0.25,
-  corroboration: 0.04,
+  corroboration: 0.15,
   unitMatch: 0.1,
-  pathStability: 0.15,
+  pathStability: 0.1,
 } as const;
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
