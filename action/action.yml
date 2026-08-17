@@ -1,10 +1,10 @@
 name: claimrot
 description: Fail a pull request when a claim cited in your docs has stopped being true.
 inputs:
-  manifest:
-    description: Path to claimrot.yml
+  verdicts:
+    description: Path to the verdicts JSON file produced by `claimrot report` (array of {verdict, confidence, claim, url})
     required: false
-    default: claimrot.yml
+    default: claimrot-verdicts.json
   confidence-floor:
     description: Minimum confidence for a drift finding to fail the build
     required: false

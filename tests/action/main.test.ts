@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { decideExit } from "../../action/main.js";
+import { decideExit, runAction } from "../../action/main.js";
 
 describe("decideExit", () => {
   it("fails on a confident DRIFTED", () => {
@@ -20,5 +20,20 @@ describe("decideExit", () => {
 
   it("passes a clean run", () => {
     expect(decideExit([{ verdict: "HOLDS", confidence: 1 }], 0.75).code).toBe(0);
+  });
+
+  it("fails on a confident REMOVED", () => {
+    expect(decideExit([{ verdict: "REMOVED", confidence: 0.9 }], 0.75).code).toBe(1);
+  });
+
+  it("does not fail on CONFLICT", () => {
+    expect(decideExit([{ verdict: "CONFLICT", confidence: 0.9 }], 0.75).code).toBe(0);
+  });
+});
+
+describe("runAction", () => {
+  it("does not fail the build when the verdicts file is missing", () => {
+    const result = runAction("/nonexistent/path/claimrot-verdicts.json", 0.75);
+    expect(result.code).toBe(0);
   });
 });
