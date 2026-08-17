@@ -44,16 +44,34 @@ function pathStability(anchor: string, actual: string): number {
 /**
  * Score a candidate against an assertion's ANCHOR — never against its value.
  * Reading the value here would let a migrated number fake a match (spec §4.2).
+ *
+ * Real collectors don't emit every signal (e.g. no DOM path), and
+ * `corroboration` is engine-only at this layer. An absent signal is "no
+ * evidence", not "contradicting evidence" — it's excluded from BOTH the
+ * numerator and denominator, so the score renormalises over whatever
+ * evidence actually exists instead of being capped by evidence we never had
+ * a chance to collect (probe A, 2026-08-17).
  */
 export function scoreCandidate(a: Assertion, c: Candidate): ScoredCandidate {
-  const signals = {
-    labelSimilarity: similarity(a.anchorLabel, c.label),
-    contextSimilarity: similarity(a.anchorContext, c.context),
-    corroboration: 0, // raised by the engine when a second source agrees
-    unitMatch: a.unit && c.unit ? (norm(a.unit) === norm(c.unit) ? 1 : 0) : 0.5,
-    pathStability: pathStability(a.anchorPath, c.path),
+  const signals: ScoredCandidate["signals"] = {
+    labelSimilarity: a.anchorLabel === "" ? null : similarity(a.anchorLabel, c.label),
+    contextSimilarity: a.anchorContext === "" ? null : similarity(a.anchorContext, c.context),
+    corroboration: null, // engine-only; unavailable at this layer, never scored 0
+    unitMatch: a.unit === null || c.unit === null
+      ? null
+      : (norm(a.unit) === norm(c.unit) ? 1 : 0),
+    pathStability: a.anchorPath === "" || c.path === "" ? null : pathStability(a.anchorPath, c.path),
   };
-  const score = (Object.keys(W) as (keyof typeof W)[])
-    .reduce((sum, k) => sum + W[k] * signals[k], 0);
+
+  let weightedSum = 0;
+  let weightTotal = 0;
+  for (const k of Object.keys(W) as (keyof typeof W)[]) {
+    const s = signals[k];
+    if (s === null) continue;
+    weightedSum += W[k] * s;
+    weightTotal += W[k];
+  }
+  const score = weightTotal === 0 ? 0 : weightedSum / weightTotal;
+
   return { ...c, score, signals };
 }

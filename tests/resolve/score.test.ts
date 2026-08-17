@@ -52,4 +52,15 @@ describe("scoreCandidate", () => {
     const s = scoreCandidate(assertion, cand({ context: "Ocean Cabin to 30 Sep 2026" }));
     expect(s.signals.contextSimilarity).toBe(1);
   });
+
+  it("clears on a real collector's output, which carries no DOM path", () => {
+    // Probe A (2026-08-17): live collectors emit no path, and corroboration is
+    // engine-only. Scored naively that is 0.25 of the weight budget stuck at
+    // zero, putting a PERFECT match at exactly CLEAR_THRESHOLD and making every
+    // real check fall through to heal. Renormalising over available signals is
+    // what keeps the monitor able to say anything but "unverifiable".
+    const s = scoreCandidate(assertion, cand({ path: "" }));
+    expect(s.score).toBeGreaterThan(CLEAR_THRESHOLD);
+    expect(s.signals.pathStability).toBeNull();
+  });
 });

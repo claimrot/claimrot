@@ -48,11 +48,11 @@ export interface Candidate {
 export interface ScoredCandidate extends Candidate {
   score: number;
   signals: {
-    labelSimilarity: number;
-    contextSimilarity: number;
-    corroboration: number;
-    unitMatch: number;
-    pathStability: number;
+    labelSimilarity: number | null;
+    contextSimilarity: number | null;
+    corroboration: number | null;
+    unitMatch: number | null;
+    pathStability: number | null;
   };
 }
 
