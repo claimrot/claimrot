@@ -1,359 +1,134 @@
+<img src="docs/assets/logo.png" alt="claimrot" width="300">
+
 # claimrot
 
-Monitor `(claim, source_url)` pairs and find out which claims have quietly
-stopped being true.
+Re-checks the claims your docs cite against the pages they cite, and tells you
+which ones stopped being true.
+
+[![CI](https://github.com/claimrot/claimrot/actions/workflows/ci.yml/badge.svg)](https://github.com/claimrot/claimrot/actions/workflows/ci.yml)
+· [Site](https://claimrot.github.io/claimrot/)
+· [Architecture](docs/architecture.md)
 
 ## The problem
 
-Link rot has a name and tooling. Claim rot has neither. Every system that
-cites a source — a RAG index, a generated article, a docs page quoting an
-external API's limits, a comparison site — produces assertions that stop
-being true while the link keeps resolving. As this hackathon's own brief puts
-it: *"You write a scraper, it works, and a week later the site changes its
-layout and everything breaks quietly."* Nobody monitors this today, because a
-scraper per source rots faster than the facts do, so the monitoring costs
-more than the staleness — unless the scraper can heal itself.
+You cite a page. Months later that page changes a number. The link still
+resolves, nothing 404s, no build breaks — and your documentation now states
+something false with a citation attached to it.
 
-## The two rules
+Link rot has a name and tooling. This doesn't.
 
-**Heal fires on blindness, never on change.** A recheck against a live page
-has three honest outcomes, not two: the value still matches, the value has
-changed (a finding), or nothing could be extracted at all (a question about
-our own eyesight, not a finding). The scar behind this rule: a prior pipeline
-shipped a confidently false refutation into two published documents because a
-literal search for `$115` missed markup that split the `$` from its digits —
-the system read "I can't find it" as "it's gone." Without this rule, every
-site redesign reports as "the operator deleted this," the false-positive rate
-goes through the roof, and nobody trusts the alerts by week two. So an empty
-extraction never becomes a verdict on its own — it triggers a heal (via
-Bright Data Scraper Studio), and only a *healed* collector that still finds
-nothing is allowed to report `REMOVED`.
+## What it looks like
 
-**Anchor on the label, verify the value.** Never search a page for the value
-you expect — search for the label that governs it, then read what that label
-says now. The scar: a real operator's NZ$59 was the adult fare, and later
-became the *senior* fare. The number never left the page. A checker asking
-"is 59 still there?" answers yes forever, and a genuinely stale claim survives
-undetected. A checker asking "what does *Adult* say now?" catches it
-immediately. This is why every assertion stores an anchor — a governing label
-and its enclosing context — never just a bare value, and why scoring a
-candidate is explicitly forbidden from looking at the candidate's own value
-(`src/resolve/score.ts`) until after the anchor has already decided which
-candidate is the right one.
+```
+$ claimrot report
 
-## Why Scraper Studio is central
-
-Self-healing extraction isn't a performance feature here — it's what makes a
-*negative* result believable at all. The reference corpus behind this project
-(2,572 claims, 942 source URLs, 352 distinct hosts — docs/design.md §9) lives
-in a separate content repository as one fact-pack JSON file per guide and
-ships with none of this repository; `ingest` expects you to point it at your
-own `*.facts.json` files. A monitor that can't tell "this
-page redesigned and our collector went blind" apart from "this fact was
-genuinely removed" produces a false `REMOVED` on every redesign across that
-whole tail, and a monitor whose negatives can't be trusted is worse than no
-monitor. Bright Data Scraper Studio is what makes blindness detectable —
-never a false `REMOVED` — everywhere in the tail, and what keeps the
-collectors themselves alive, self-repairing without a person rewriting
-selectors by hand, on the hosts you've provisioned a collector for. The
-generic fallback that covers the rest of the tail inherits the detection
-half but not the repair half — see Limitations.
-
-We probed this live before building on it (`docs/probes/2026-08-17-scraper-studio.md`,
-against `whalewatch.co.nz`, a real operator site in the corpus) and confirmed
-three things the design depends on:
-
-- A collector run returns a genuine **array** of labelled candidates, not a
-  single flattened value per field — required for the anchor-and-score
-  resolution in §4.4 of the design doc to have anything to work with.
-- `scraper heal` accepts a prompt built purely from *our own* description of
-  an empty result — no synthetic error has to be manufactured to trigger a
-  heal on blindness.
-- `scraper heal --auto-approve` **without** `--auto-save` returns
-  `status: "done"` while silently discarding the fix — the only difference in
-  the envelope is whether `"save_new_template"` appears in `completed_steps`.
-  This is a real trap the probe caught before it shipped: `src/collect/studio.ts`'s
-  `healCollector` always passes both flags together and checks
-  `completed_steps`, never `status`, to decide whether a heal actually
-  persisted.
-
-The probe also found a real limitation worth stating plainly: an AI-authored
-collector, even one explicitly prompted for "every price on the page as a
-list," under-collects prices that sit in prose rather than in a table — see
-Limitations below.
-
-## Quickstart
-
-```bash
-npm install
-npm run build
-
-# Reduce prose claims from a fact pack into structured, testable assertions.
-# Calls Claude once per claim, then never again for that claim — this step
-# needs an Anthropic API key (ANTHROPIC_API_KEY).
-npm run cli -- --db claimrot.db ingest 'path/to/*.facts.json'
-
-# Run the engine: fetch each due claim's source via its collector, resolve
-# candidates against the stored anchor, heal on blindness, record a verdict.
-# No model calls happen here — every check after ingest is a deterministic
-# comparison against a structured record, not a fresh model call.
-npm run cli -- --db claimrot.db check
-
-# Print drift receipts (defaults to DRIFTED; pass --verdict to filter).
-npm run cli -- --db claimrot.db report --verdict DRIFTED
-
-# Corpus-wide half-life analysis (see Limitations — this needs the full
-# corpus to mean anything, not a handful of claims).
-npm run cli -- --db claimrot.db study
+DRIFTED  (confidence 1.00, checked 2026-08-17)
+  published: Adult admission on the Ocean Cabin tour is NZ$170.
+  source:    https://whalewatch.co.nz/…/whale-watch-tour/
+  now:       "Adult" = 175
+  why:       "Adult" now reads 175, expected 170
 ```
 
-`check` and `report` need no credential beyond whatever Bright Data
-credential Scraper Studio collectors were created under; only `ingest` needs
-`ANTHROPIC_API_KEY`.
+Real output, from a real page. More of it in [`examples/`](examples/).
 
-## Continuous integration
+## Use it
 
-`claimrot` ships a GitHub Action (`action/`) that fails a pull request when a
-confident drift finding is present. It consumes the JSON `report --json`
-produces, not any other file in this repo — see the note on `examples/output.json`
-below, which is a record of a past run, not the Action's input format.
+Node 22+. An Anthropic API key is needed for `ingest` only.
 
 ```bash
-# In CI, after `check` has run against your own DB:
-npm run cli -- --db claimrot.db report --json > claimrot-verdicts.json
+git clone https://github.com/claimrot/claimrot
+cd claimrot && npm install
+
+# Reduce prose claims into testable assertions. Once per claim, then never again.
+npm run cli -- ingest 'path/to/*.facts.json'
+
+# Fetch each source, score candidates, heal when blind, record verdicts.
+npm run cli -- check
+
+# Print the receipts.
+npm run cli -- report
+```
+
+## The idea
+
+Most monitors compare a page to its last snapshot and answer *same* or
+*changed*. That holds up until the checker goes blind — a redesign moves the
+price, a selector stops matching — and then a two-answer system tells you the
+operator deleted something they didn't.
+
+claimrot has a third answer.
+
+- `HOLDS` — the source still says what you published.
+- `DRIFTED` — it changed. Here's the old value, the new one, and the URL.
+- `UNVERIFIABLE` — we couldn't read it, and we won't guess.
+
+Finding nothing never produces a verdict. It asks Bright Data Scraper Studio to
+repair the scraper, runs it again, and only reports `REMOVED` if a working
+scraper still finds nothing. Self-healing isn't what makes this fast; it's what
+makes a negative worth believing.
+
+The other half is that an assertion stores *"whatever sits beside the label
+Adult"*, not *"175"*. An operator's NZ$59 was once the adult fare and is now the
+senior fare — the number is still on the page, so anything searching for the
+value calls that claim healthy forever.
+
+More in [docs/architecture.md](docs/architecture.md).
+
+## In CI
+
+```bash
+npm run cli -- report --json > claimrot-verdicts.json
 ```
 
 ```yaml
-# .github/workflows/claimrot.yml
-- run: npm run cli -- --db claimrot.db report --json > claimrot-verdicts.json
 - uses: claimrot/claimrot@v1
   with:
     verdicts: claimrot-verdicts.json
     confidence-floor: "0.75"
 ```
 
-The action (`action/main.ts`) never fails the build on a missing or
-unreadable verdicts file, and never fails it on `UNVERIFIABLE` or
-`AMBIGUOUS` — only a `DRIFTED` or `REMOVED` finding at or above
-`confidence-floor` turns the check red (see `decideExit`).
-
-`action/action.yml` points at `../dist/action/main.js`, and a GitHub Action
-must run straight from a checkout — it cannot `npm run build` itself before
-`uses: claimrot/claimrot@v1` even resolves. So `dist/action/main.js` is
-committed (the only file under `dist/action/` that is; `.gitignore` still
-excludes the rest of `dist/`, including `dist/action/main.d.ts`, which
-nothing at runtime needs). It has no runtime dependency beyond Node's
-built-in `node:fs` — the only import from `src/` in `action/main.ts` is a
-type, which `tsc` erases, so the compiled bundle is self-contained. **If you
-change `action/main.ts`, you must run `npm run build` and commit the
-resulting `dist/action/main.js` in the same PR** — CI's dogfooding job
-(`.github/workflows/ci.yml`) runs the action against a fixture and will not
-catch a stale bundle that still happens to pass; it only proves the
-committed file executes, not that it matches the source.
-
-## Example output
-
-`examples/` is a **genuine, committed run**, not a fabricated sample. The
-machine that produced it has a working Bright Data credential but no
-Anthropic API key, so it exercises every stage of the pipeline except one:
-
-- **Skipped, and covered instead by unit tests
-  (`tests/ingest/normalize.test.ts`):** the Claude-backed prose-to-assertion
-  reduction that `ingest` normally performs. In its place, `examples/assertions.json`
-  holds four assertions transcribed by hand from the real structure of
-  `https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/`
-  (verified live and recorded verbatim in `docs/probes/2026-08-17-scraper-studio.md`),
-  inserted straight into a scratch SQLite DB against the schema in
-  `src/db/schema.sql`, bypassing `ingest` entirely. Two of the four
-  assertions are deliberately counterfactual prior claims — a stale price and
-  a price the page never carried — chosen specifically to exercise the
-  `DRIFTED` and blindness/heal branches against a real, unaltered collector
-  response, never to fake one.
-- **Genuinely exercised, end to end, against the live page:** the real
-  Scraper Studio collector created during the probe (`c_msx2l16bsipcs0zz`),
-  the real engine (`checkAssertion` in `src/engine/check.ts` — the identical
-  function the `check` CLI command calls), real scoring and resolution
-  (`src/resolve/`), and the real `report` CLI command. Two assertions
-  resolved `HOLDS` (label and value both matched the live page), one resolved
-  `DRIFTED` (the label matched but the asserted value didn't — the real page
-  says NZ$175, the planted stale claim said NZ$170), and one exercised the
-  blindness branch: no candidate anchored on "Senior" because the page has no
-  senior price, which correctly triggered a heal call to the live collector
-  rather than an immediate negative.
-- **Why this ran through a driver script and not `claimrot check` itself:**
-  `src/collect/registry.ts`'s entries are placeholder collector IDs (e.g.
-  `c_whalewatch`) waiting to be filled in from each host's own
-  `bdata scraper create` output — `whalewatch.co.nz` hasn't been provisioned
-  that way yet, only the separate collector the probe created
-  (`c_msx2l16bsipcs0zz`) has. So `examples/produce-output.ts` calls the real,
-  unmodified `checkAssertion` engine (`src/engine/check.ts`) directly with
-  that real collector ID, rather than going through `claimrot check`, which
-  would have resolved the placeholder and failed. See Limitations.
-- **What the heal call itself showed:** an earlier heal in this same session
-  was interrupted locally by a client-side timeout while still running on
-  Bright Data's servers, which then held the collector locked
-  (`"Another refactor job is still in progress"`, HTTP 409) for the rest of
-  the session. Every retry documented in `examples/heal-attempts.log` hit
-  that same lock. The engine's response to a heal it cannot complete is
-  exactly what the design requires: `UNVERIFIABLE`, never a fabricated
-  `DRIFTED` or `REMOVED` — see `src/engine/check.ts`'s `unverifiable(...)`
-  branch. So this run did not reach a clean `REMOVED` outcome, but it did
-  demonstrate, with a real failure and not a staged one, that a heal failure
-  degrades to "we don't know," not to a false finding.
-
-Files:
-
-- `examples/assertions.json` — the four hand-authored input assertions, with
-  notes on which branch each one targets and why.
-- `examples/produce-output.ts` — the driver that inserted them and ran the
-  real engine and collector against the live page. Reproducing it hits the
-  live Bright Data API and costs time and credits; it's committed as a record
-  of what happened, not as a script meant for casual re-runs. Running it
-  writes `examples/demo.db`, the actual SQLite database (claims, assertions,
-  verdicts with full evidence, in the schema described in docs/design.md §6)
-  — not committed, since the repo's `.gitignore` excludes all `*.db` files;
-  `output.json` below is that database's verdicts table, exported.
-- `examples/output.json` — the verdict rows from `demo.db`, exported as
-  structured JSON: claim id, claim text, source, verdict, confidence, and
-  timestamp at the top level, plus an `evidence` object nesting the chosen
-  candidate, the full contender list, and the reason string — the example
-  structured output the hackathon rules require. **This is a record of that
-  one real run, not the shape the GitHub Action reads** — the Action consumes
-  `report --json`'s flatter `{verdict, confidence, claim, url}` array (see
-  Continuous integration above); running the Action against this file exits
-  oddly (receipts read `- undefined (undefined)`) because it's the wrong
-  shape for that purpose, not because anything is broken. Five rows, not four: the
-  "Senior" blindness claim was checked twice (see above), and both real
-  attempts are included rather than only keeping the one that reads more
-  cleanly.
-- `examples/report.txt` — the real stdout of the `report` CLI command
-  against `demo.db`, with the invoking commands shown, run once per verdict
-  present in it (`--verdict DRIFTED`, `--verdict HOLDS`,
-  `--verdict UNVERIFIABLE`).
-- `examples/heal-attempts.log` — the raw transcript of the heal lock above,
-  for anyone who wants to see the actual failure rather than take the summary
-  on faith.
+`UNVERIFIABLE` never fails a build. A check that goes red because our own
+scraper broke gets turned off within a fortnight, and then it protects nobody.
 
 ## Limitations
 
-- **Top follow-up: per-URL fetch dedup is specified but not implemented.**
-  Design doc §6 states fetches are deduplicated per distinct URL — 942 URLs
-  carrying 2,572 claims in the reference corpus, a mean of 2.7 claims per
-  fetch. `check` (`src/cli.ts`) actually iterates one row per *assertion* and
-  issues its own collector call for each, with no per-URL grouping or cache
-  in that loop. So today's real fetch count tracks the assertion count, not
-  the distinct-URL count — roughly **2.7× the collector calls, HTTP requests,
-  and Bright Data spend** the corpus numbers above imply. This was left
-  unfixed deliberately: restructuring the per-row check loop this close to
-  the deadline, with per-host concurrency and politeness pacing
-  (`src/net/politeness.ts`'s `HostQueue`) already built around today's
-  one-row-at-a-time shape, risked introducing a concurrency bug for a
-  performance win, and that trade wasn't worth making under deadline
-  pressure. See `docs/design.md` §6.
-- **The half-life study awaits a full corpus run.** Design doc §9 specifies a
-  measured half-life across the reference corpus's 2,572 claims; producing
-  that number requires running `ingest` over the full corpus, which requires
-  the Anthropic API key this machine doesn't have. No half-life figure is
-  quoted anywhere in this repository. Do not infer one from the four-claim
-  example above — a sample that small proves the mechanism works, not what
-  the corpus-wide decay rate is.
-- **`flagBlobCandidates` is a token-structural heuristic**, not a semantic
-  one (`src/collect/studio.ts`). It screens out a candidate whose label
-  matches more than one distinct known anchor, on the reasoning that such a
-  label is probably a blob a collector mis-extracted rather than a genuine
-  single value. Its known false positive: a real two-axis pricing grid, where
-  a cell genuinely labelled "Adult Weekday" sits under separate row/column
-  anchors "Adult" and "Weekday", gets screened out — both anchors are
-  token-subsets of the label, so it reads as a blob. This fails toward
-  `UNVERIFIABLE`, never toward a false verdict: a screened-out candidate is
-  blindness to the engine, which triggers a heal rather than silently picking
-  the wrong price.
-- **`CONFLICT` is specified (design doc §4.6, §4.7) but not implemented.**
-  The corpus carries exactly one source per claim, so there is nothing for a
-  claim to disagree with itself about yet. The scoring and resolution code
-  has no path that could currently produce it.
-- **`src/collect/registry.ts`'s per-host collector IDs are placeholders**
-  (`c_fareharbor`, `c_realnz`, `c_whalewatch`, and so on) waiting to be
-  filled in from each host's own `bdata scraper create` run — none of them
-  are real Bright Data collector IDs yet on this machine. So `check` today
-  resolves candidates for real only on hosts you've actually provisioned,
-  plus the unmatched tail, which falls to the generic collector below.
-- **The generic JSON-LD collector (`src/collect/generic.ts`, wired into
-  `check` via `runGeneric` in `src/cli.ts`) handles `offers`, and unwraps
-  `@graph`-wrapped nodes (common from WordPress/Yoast sites)**, but its
-  coverage is not exhaustive — it does not attempt microdata, RDFa, or every
-  schema.org type a commerce page might use. It is the fallback for the
-  unmatched tail of hosts (the majority case, since per-host collectors
-  above are still placeholders), not a general schema.org parser. A fetch
-  failure here always reports `error`, never `empty` — see
-  `tests/cli.test.ts`'s "generic collector fallback" tests.
-- **The generic fallback can detect blindness but cannot heal.** Healing
-  requires a real Scraper Studio collector, and the generic path is not one:
-  `src/engine/check.ts` calls `deps.heal` with the same collector ID it
-  checked with, which for the tail is the literal string `"generic"` — not a
-  Bright Data collector, so the heal call fails every time. The behaviour is
-  safe (it degrades to `UNVERIFIABLE`, exactly like any other heal failure,
-  never to a guessed verdict), but it is a real capability gap, not just a
-  coverage one: when a tail host goes blind, claimrot correctly reports that
-  it doesn't know rather than guessing — but it cannot repair itself there.
-  Self-healing, in the sense of a collector that fixes its own extraction,
-  covers only the hosts you've provisioned a collector for; the generic
-  fallback covers the rest of the tail for *detection* only. Closing that gap
-  means provisioning a real collector per host family — the setup step the
-  registry's placeholders above exist for.
-- **Scraper Studio itself under-collects prose-embedded values.** The probe
-  (`docs/probes/2026-08-17-scraper-studio.md`, Probe A) found that even an
-  explicit "every price on the page, as a list" prompt missed a second Adult
-  price that the live page states in a prose note rather than its pricing
-  table. Collector prompts likely need explicit instruction to walk list
-  items and inline text, not just tabular markup, and that tuning is
-  per-collector work this hackathon window didn't reach.
-- **`anchorPath` is never populated.** `src/ingest/normalize.ts` writes `""`
-  with a comment saying it is "recorded on the first successful check," and
-  nothing ever records it. So `pathStability` (`src/resolve/score.ts`) — 10%
-  of the scoring weight — cannot fire in production. Scores renormalise over
-  the remaining signals, so this is not a bug, but the signal is currently
-  dead.
-- **`expiresAt` is never populated.** `src/ingest/factpack.ts` hardcodes
-  `null`, so the expiry-aware scheduling in `src/engine/schedule.ts` (check
-  the day before *and* the day after a self-declared expiry) is unreachable
-  in production. It is implemented and tested; nothing feeds it. Extracting
-  expiry dates during ingest is the follow-up.
-- **The `checks` and `candidates` tables are created and never written.**
-  They are specified in `docs/design.md` §6; `verdicts.check_id` is always
-  `""` (`src/cli.ts`'s `check` command). Verdict evidence is stored inline in
-  `verdicts.evidence_json` instead.
+- **No half-life figure is published anywhere in this repo.** Measuring how fast
+  cited claims decay needs an ingest run over the full 2,572-claim corpus, which
+  needs an API key this machine doesn't have. The four-claim example proves the
+  mechanism works; it says nothing about a decay rate.
+- **Checks run per claim, not per page.** A page cited by three claims is fetched
+  three times — roughly 2.7× the requests the corpus needs. Fixing it means
+  reworking the loop that per-host pacing is built around, so it waited.
+- **The generic fallback can detect blindness but not repair it.** Healing needs
+  a real Scraper Studio collector, so self-repair covers hosts you've
+  provisioned one for; everything else degrades to `UNVERIFIABLE`.
+- **The blob-label screen is structural, not semantic.** A genuine two-axis grid
+  cell labelled "Adult Weekday" gets screened out when "Adult" and "Weekday" are
+  both anchors. It fails toward `UNVERIFIABLE`, never toward a wrong verdict.
+- **Three things are specified but unwired:** `anchor_path`, `expires_at`, and
+  the `checks`/`candidates` tables. Listed in
+  [docs/architecture.md](docs/architecture.md) so nobody finds them by surprise.
+- The Action's bundle is committed at `dist/action/main.js` and must be rebuilt
+  when `action/main.ts` changes. CI won't catch a stale one.
 
 ## Conduct
 
-Public data only — no login-protected, paywalled, personal, or otherwise
-restricted sources. `api.viator.com` (21 URLs in the reference corpus) is an
-authenticated partner API and is excluded from the corpus entirely
-(`src/ingest/factpack.ts`). robots.txt is fetched once per host — through the
-same `HostQueue` that paces every other request to that host, identified with
-`claimrot/0.1 (+https://github.com/claimrot/claimrot)` (`ROBOTS_UA` in
-`src/cli.ts`) — and checked before any claim on that host is checked; a claim
-whose path is disallowed is skipped, never silently treated as removed
-(`src/net/politeness.ts`'s `isAllowed`, tested in `tests/net/robots.test.ts`;
-`docs/design.md` §10).
+Public data only — nothing behind a login, paywall, or personal account.
+`api.viator.com` is an authenticated partner API and is excluded outright.
 
-Per-host concurrency is 1, at roughly 0.8 requests/second
-(`src/net/politeness.ts`'s `HostQueue`, 1250ms between requests to the same
-host). This is not politeness theatre: 375 concurrent probes against a
-partner's production host once caused a 90-minute outage — a real scar this
-design (`docs/design.md` §10) carries forward. A monitor that watches 352
-hosts and hits all of them at once is a DDoS with a cron attached. Parallelism
-in claimrot is only ever *across* hosts — one host's queue never blocks
-another's — never within one. This same rule governed how this README's own
-example run touched the live `whalewatch.co.nz` host: one collector, one
-request in flight at a time, issued serially.
+One request in flight per host, about 0.8 per second, parallel across hosts and
+never within one. `robots.txt` is fetched once per host through that same queue
+and honoured before any claim on it is checked; a disallowed URL produces no
+verdict rather than a guess. Every direct request identifies itself as
+`claimrot/0.1 (+https://github.com/claimrot/claimrot)`.
 
-## AI-assistance disclosure
+That pacing isn't decoration. 375 concurrent probes against a partner's
+production host once caused a 90-minute outage, and a monitor watching 352 hosts
+at once is a DDoS with a cron attached.
 
-This project was designed and implemented with Claude Code (Anthropic).
-Claude Code wrote the design document, the engine, the collectors, the CLI,
-the GitHub Action, the tests, and this README, under direction and review
-from the author throughout. The author understands the design — the
-three-outcome recheck, the anchor-not-value scoring, the heal-on-blindness
-rule, and the honesty constraints on the corpus study above — and can explain
-any part of it.
+## Built with
+
+Designed and implemented with Claude Code (Anthropic), under review throughout.
+Built for the Bright Data *Into the Scrape-Verse* hackathon, August 2026.
+
+MIT

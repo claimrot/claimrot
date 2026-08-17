@@ -1,0 +1,229 @@
+/* claimrot — palette taken from the mark: the intact link, the rotting one. */
+:root {
+  --ink:    #16202b;
+  --link:   #1d2a38;
+  --rot:    #c0562c;
+  --paper:  #fafaf9;
+  --band:   #f2f1ee;
+  --muted:  #6e7681;
+  --rule:   #e3e1dd;
+
+  --display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --body:    "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --mono:    "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --measure: 34rem;
+  --pad: clamp(1.25rem, 5vw, 3rem);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 1.0625rem/1.65 var(--body);
+  text-underline-offset: 0.2em;
+}
+
+a { color: var(--link); text-decoration-color: var(--rule); }
+a:hover { text-decoration-color: var(--rot); }
+:focus-visible { outline: 2px solid var(--rot); outline-offset: 3px; }
+
+code { font-family: var(--mono); font-size: 0.92em; }
+
+/* ---- top bar ---------------------------------------------------------- */
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1.1rem var(--pad);
+  border-bottom: 1px solid var(--rule);
+}
+
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font: 700 1.05rem/1 var(--display);
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  color: var(--ink);
+}
+.wordmark img { display: block; height: 1.5rem; width: auto; }
+
+.bar nav { display: flex; gap: 1.4rem; font-size: 0.95rem; }
+
+/* ---- shared section rhythm -------------------------------------------- */
+
+main { display: block; }
+
+section {
+  padding: clamp(3rem, 8vw, 5.5rem) var(--pad);
+}
+section > * { max-width: var(--measure); }
+
+.band {
+  background: var(--band);
+  border-block: 1px solid var(--rule);
+}
+
+h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: -0.02em; }
+
+h2 {
+  font-size: clamp(1.6rem, 3.6vw, 2.1rem);
+  line-height: 1.15;
+  margin: 0 0 1.1rem;
+}
+
+h3 {
+  font-size: 1.06rem;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.35rem;
+}
+
+p { margin: 0 0 1.05rem; }
+
+.aside {
+  border-left: 2px solid var(--rot);
+  padding-left: 1rem;
+  color: var(--muted);
+  margin-top: 1.8rem;
+}
+.aside code { color: var(--ink); }
+
+/* ---- hero -------------------------------------------------------------- */
+
+.hero { padding-top: clamp(3rem, 9vw, 6rem); }
+
+h1 {
+  font-size: clamp(2.4rem, 7.2vw, 4.15rem);
+  line-height: 1.02;
+  margin: 0 0 1.4rem;
+  max-width: 15ch;
+}
+
+/* The mark shows a link whose far half dissolves into pixels. The headline
+   does the same thing to itself: the sentence that decays, decays. */
+.rot {
+  color: var(--rot);
+  -webkit-mask-image: linear-gradient(100deg, #000 76%, rgba(0, 0, 0, 0.55) 89%, rgba(0, 0, 0, 0.18) 97%, transparent 100%);
+          mask-image: linear-gradient(100deg, #000 76%, rgba(0, 0, 0, 0.55) 89%, rgba(0, 0, 0, 0.18) 97%, transparent 100%);
+}
+
+.lede { font-size: 1.13rem; }
+.hero .lede:last-of-type { color: var(--muted); }
+
+/* ---- the receipt ------------------------------------------------------- */
+
+.receipt {
+  margin: 2.6rem 0 0;
+  max-width: 46rem;
+}
+.receipt figcaption {
+  font: 500 0.78rem/1 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--muted);
+  margin-bottom: 0.7rem;
+}
+
+pre {
+  margin: 0;
+  padding: 1.15rem 1.25rem;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--link);
+  overflow-x: auto;
+  font: 400 0.875rem/1.6 var(--mono);
+}
+pre.block { max-width: 46rem; margin-bottom: 1.05rem; }
+pre .c { color: var(--muted); }
+
+/* ---- verdicts ---------------------------------------------------------- */
+
+.v-hold  { color: var(--link); }
+.v-drift { color: var(--rot); }
+.v-unver { color: var(--muted); }
+
+.verdicts { margin: 2rem 0 0; display: grid; gap: 0; }
+.verdicts > div {
+  display: grid;
+  grid-template-columns: 10.5rem 1fr;
+  gap: 1rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--rule);
+  align-items: baseline;
+}
+.verdicts > div:last-child { border-bottom: 1px solid var(--rule); }
+
+dt {
+  font: 500 0.82rem/1 var(--mono);
+  letter-spacing: 0.06em;
+}
+dd { margin: 0; }
+
+/* The third verdict is the one nobody else has, so it is the one that is
+   drawn rather than filled — an outline, because it marks an absence. */
+.verdicts .third dt {
+  display: inline-block;
+  border: 1px dashed var(--muted);
+  padding: 0.3rem 0.5rem;
+  margin: -0.3rem 0;
+}
+
+/* ---- steps ------------------------------------------------------------- */
+
+.steps { margin: 2rem 0 0; padding: 0; list-style: none; counter-reset: step; }
+.steps li {
+  counter-increment: step;
+  padding: 1.4rem 0;
+  border-top: 1px solid var(--rule);
+}
+.steps li:last-child { border-bottom: 1px solid var(--rule); }
+.steps h3::before {
+  content: counter(step, decimal-leading-zero);
+  font: 500 0.78rem/1 var(--mono);
+  color: var(--rot);
+  margin-right: 0.75rem;
+  vertical-align: 0.12em;
+}
+.steps p { margin: 0; color: var(--muted); }
+
+/* ---- limitations ------------------------------------------------------- */
+
+.limits { margin: 1.6rem 0 0; padding: 0; list-style: none; }
+.limits li {
+  padding: 0.9rem 0 0.9rem 1.15rem;
+  border-top: 1px solid var(--rule);
+  border-left: 2px solid transparent;
+  color: var(--muted);
+}
+.limits li:last-child { border-bottom: 1px solid var(--rule); }
+
+/* ---- footer ------------------------------------------------------------ */
+
+footer {
+  padding: 2.2rem var(--pad) 3.5rem;
+  border-top: 1px solid var(--rule);
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+footer a { color: var(--muted); }
+.fine { margin: 0.4rem 0 0; font-size: 0.85rem; }
+
+/* ---- narrow ------------------------------------------------------------ */
+
+@media (max-width: 34rem) {
+  .verdicts > div { grid-template-columns: 1fr; gap: 0.35rem; }
+  .bar nav { gap: 1rem; font-size: 0.9rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

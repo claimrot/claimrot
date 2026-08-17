@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>claimrot — cited claims that quietly stopped being true</title>
+<meta name="description" content="claimrot re-checks the claims your docs cite against the pages they cite, and tells you which ones stopped being true — without confusing a broken scraper for a deleted fact.">
+<link rel="icon" href="assets/favicon.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="bar">
+  <a class="wordmark" href="./">
+    <img src="assets/logo.png" alt="" width="44" height="25">
+    <span>claimrot</span>
+  </a>
+  <nav>
+    <a href="#start">Quickstart</a>
+    <a href="https://github.com/claimrot/claimrot/blob/main/docs/architecture.md">Architecture</a>
+    <a href="https://github.com/claimrot/claimrot">GitHub</a>
+  </nav>
+</header>
+
+<main>
+
+<section class="hero">
+  <h1>The link still works.<br><span class="rot">The claim doesn&rsquo;t.</span></h1>
+  <p class="lede">
+    You cited a page. Months later the page changed a number. No link died, no
+    build broke, nothing told you &mdash; and your documentation now says
+    something false with a citation attached.
+  </p>
+  <p class="lede">
+    claimrot re-reads the sources you cite and reports the claims that stopped
+    being true.
+  </p>
+
+  <figure class="receipt">
+    <figcaption>Real output. Not an illustration.</figcaption>
+<pre><code><span class="c">$ claimrot report</span>
+
+<span class="v-drift">DRIFTED</span>  <span class="c">(confidence 1.00, checked 2026-08-17)</span>
+  published: Adult admission on the Ocean Cabin tour is NZ$170.
+  source:    https://whalewatch.co.nz/&hellip;/whale-watch-tour/
+  now:       "Adult" = 175
+  why:       "Adult" now reads 175, expected 170</code></pre>
+  </figure>
+</section>
+
+<section class="band">
+  <h2>Three answers, not two</h2>
+  <p>
+    Most monitors diff a page against its last snapshot and tell you
+    <em>same</em> or <em>changed</em>. That works until the checker itself goes
+    blind. A redesign moves the price, a selector stops matching, and a
+    two-answer system confidently reports that the operator deleted it.
+  </p>
+  <p>That is the failure claimrot exists to avoid, so it has a third answer.</p>
+
+  <dl class="verdicts">
+    <div>
+      <dt class="v-hold">HOLDS</dt>
+      <dd>The source still says what you published.</dd>
+    </div>
+    <div>
+      <dt class="v-drift">DRIFTED</dt>
+      <dd>The value changed. You get the old one, the new one, and the URL.</dd>
+    </div>
+    <div class="third">
+      <dt class="v-unver">UNVERIFIABLE</dt>
+      <dd>We could not read it, and we will not guess.</dd>
+    </div>
+  </dl>
+
+  <p class="aside">
+    When extraction comes back empty, claimrot does not conclude the value is
+    gone. It asks Bright Data Scraper Studio to repair the scraper, runs it
+    again, and only reports <code>REMOVED</code> if a <em>working</em> scraper
+    still finds nothing. Healing is not what makes it fast. It is what makes a
+    negative believable.
+  </p>
+</section>
+
+<section>
+  <h2>How a check runs</h2>
+  <ol class="steps">
+    <li>
+      <h3>Reduce the claim, once</h3>
+      <p>
+        A model reads your prose claim a single time and reduces it to something
+        testable &mdash; a value, a unit, and the label on the page that governs
+        it. After that the model is never called again for that claim.
+      </p>
+    </li>
+    <li>
+      <h3>Look for the label, never the value</h3>
+      <p>
+        A price that moved from the &ldquo;Adult&rdquo; row to the
+        &ldquo;Senior&rdquo; row is still on the page. Searching for the number
+        finds it and calls the claim fine, forever. claimrot searches for the
+        label and reads whatever now sits beside it.
+      </p>
+    </li>
+    <li>
+      <h3>Heal on blindness, never on change</h3>
+      <p>
+        Finding nothing is not evidence of absence &mdash; it is a statement
+        about our own eyesight. So an empty result triggers a repair of the
+        scraper, not a verdict.
+      </p>
+    </li>
+    <li>
+      <h3>Report with receipts</h3>
+      <p>
+        Every verdict carries what you published, what the page says now, the
+        URL, and why the two disagree. Nothing asks you to take its word.
+      </p>
+    </li>
+  </ol>
+</section>
+
+<section class="band" id="start">
+  <h2>Quickstart</h2>
+  <p>Node 22 or newer. An Anthropic API key is needed for <code>ingest</code> only.</p>
+<pre class="block"><code>git clone https://github.com/claimrot/claimrot
+cd claimrot &amp;&amp; npm install
+
+<span class="c"># Reduce prose claims into testable assertions. Once per claim.</span>
+npm run cli -- ingest 'path/to/*.facts.json'
+
+<span class="c"># Fetch each source, resolve candidates, heal on blindness, record verdicts.</span>
+npm run cli -- check
+
+<span class="c"># Print the drift receipts.</span>
+npm run cli -- report</code></pre>
+
+  <h3>In continuous integration</h3>
+  <p>
+    Emit verdicts as JSON and let the action fail the pull request when a cited
+    claim has drifted.
+  </p>
+<pre class="block"><code>npm run cli -- report --json &gt; claimrot-verdicts.json</code></pre>
+<pre class="block"><code><span class="c">- uses: claimrot/claimrot@v1
+  with:
+    verdicts: claimrot-verdicts.json
+    confidence-floor: "0.75"</span></code></pre>
+  <p class="aside">
+    <code>UNVERIFIABLE</code> never fails a build. A check that turns red
+    because our own scraper broke gets switched off within a fortnight, and then
+    it protects nobody.
+  </p>
+</section>
+
+<section>
+  <h2>What it can&rsquo;t do</h2>
+  <p>
+    Worth knowing before you rely on it. The full list lives in the
+    <a href="https://github.com/claimrot/claimrot#limitations">README</a>.
+  </p>
+  <ul class="limits">
+    <li>
+      The generic fallback detects blindness but cannot repair itself. Healing
+      needs a real Scraper Studio collector, so self-repair reaches the hosts you
+      have provisioned one for.
+    </li>
+    <li>
+      Claims are checked one at a time rather than one fetch per page, so a page
+      cited by several claims is fetched several times.
+    </li>
+    <li>
+      It verifies a claim against <em>the source it cites</em>. It has no opinion
+      on whether that source was right in the first place.
+    </li>
+  </ul>
+</section>
+
+</main>
+
+<footer>
+  <p>
+    <a href="https://github.com/claimrot/claimrot">Source</a> &middot;
+    <a href="https://github.com/claimrot/claimrot/blob/main/docs/architecture.md">Architecture</a> &middot;
+    <a href="https://github.com/claimrot/claimrot/blob/main/docs/design.md">Design notes</a> &middot;
+    MIT
+  </p>
+  <p class="fine">Built for the Bright Data Into the Scrape-Verse hackathon, August 2026.</p>
+</footer>
+
+</body>
+</html>
