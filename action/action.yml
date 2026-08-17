@@ -10,5 +10,5 @@ inputs:
     required: false
     default: "0.75"
 runs:
-  using: node20
+  using: node24
   main: ../dist/action/main.js
