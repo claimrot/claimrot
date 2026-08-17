@@ -1,11 +1,15 @@
 {
   "name": "claimrot",
   "version": "0.1.0",
+  "description": "Monitor (claim, source_url) pairs and find out which claims have quietly stopped being true.",
+  "license": "MIT",
+  "repository": "https://github.com/claimrot/claimrot",
   "type": "module",
   "bin": { "claimrot": "./dist/src/cli.js" },
   "scripts": {
     "build": "tsc && cp src/db/schema.sql dist/src/db/",
     "test": "vitest run",
+    "typecheck": "tsc --noEmit",
     "cli": "tsx src/cli.ts"
   },
   "dependencies": {

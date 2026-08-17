@@ -137,6 +137,20 @@ unreadable verdicts file, and never fails it on `UNVERIFIABLE` or
 `AMBIGUOUS` — only a `DRIFTED` or `REMOVED` finding at or above
 `confidence-floor` turns the check red (see `decideExit`).
 
+`action/action.yml` points at `../dist/action/main.js`, and a GitHub Action
+must run straight from a checkout — it cannot `npm run build` itself before
+`uses: claimrot/claimrot@v1` even resolves. So `dist/action/main.js` is
+committed (the only file under `dist/action/` that is; `.gitignore` still
+excludes the rest of `dist/`, including `dist/action/main.d.ts`, which
+nothing at runtime needs). It has no runtime dependency beyond Node's
+built-in `node:fs` — the only import from `src/` in `action/main.ts` is a
+type, which `tsc` erases, so the compiled bundle is self-contained. **If you
+change `action/main.ts`, you must run `npm run build` and commit the
+resulting `dist/action/main.js` in the same PR** — CI's dogfooding job
+(`.github/workflows/ci.yml`) runs the action against a fixture and will not
+catch a stale bundle that still happens to pass; it only proves the
+committed file executes, not that it matches the source.
+
 ## Example output
 
 `examples/` is a **genuine, committed run**, not a fabricated sample. The
@@ -294,6 +308,21 @@ Files:
   table. Collector prompts likely need explicit instruction to walk list
   items and inline text, not just tabular markup, and that tuning is
   per-collector work this hackathon window didn't reach.
+- **`anchorPath` is never populated.** `src/ingest/normalize.ts` writes `""`
+  with a comment saying it is "recorded on the first successful check," and
+  nothing ever records it. So `pathStability` (`src/resolve/score.ts`) — 10%
+  of the scoring weight — cannot fire in production. Scores renormalise over
+  the remaining signals, so this is not a bug, but the signal is currently
+  dead.
+- **`expiresAt` is never populated.** `src/ingest/factpack.ts` hardcodes
+  `null`, so the expiry-aware scheduling in `src/engine/schedule.ts` (check
+  the day before *and* the day after a self-declared expiry) is unreachable
+  in production. It is implemented and tested; nothing feeds it. Extracting
+  expiry dates during ingest is the follow-up.
+- **The `checks` and `candidates` tables are created and never written.**
+  They are specified in `docs/design.md` §6; `verdicts.check_id` is always
+  `""` (`src/cli.ts`'s `check` command). Verdict evidence is stored inline in
+  `verdicts.evidence_json` instead.
 
 ## Conduct
 

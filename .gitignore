@@ -1,4 +1,7 @@
 node_modules/
-dist/
+dist/*
+!dist/action/
+dist/action/*
+!dist/action/main.js
 *.db
 .env

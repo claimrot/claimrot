@@ -239,6 +239,13 @@ candidates(id, check_id, field, value_num, value_text, unit,
 verdicts  (id, check_id, claim_id, verdict, confidence, evidence_json)
 ```
 
+**`checks` and `candidates` are created and never written.** `src/cli.ts`'s
+`check` command inserts directly into `verdicts` with `check_id` hardcoded to
+`""` — no row is ever inserted into `checks`, and consequently `candidates`
+(which is keyed off `check_id`) has nothing to join against either. Verdict
+evidence is stored inline in `verdicts.evidence_json` instead of normalized
+into these two tables. See README's Limitations.
+
 Fetches are deduplicated **per distinct URL**, not per claim — in the reference
 corpus that is 942 URLs carrying 2,572 claims, a mean of 2.7 claims per fetch.
 

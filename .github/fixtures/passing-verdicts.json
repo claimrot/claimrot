@@ -1,0 +1,20 @@
+[
+  {
+    "verdict": "HOLDS",
+    "confidence": 1,
+    "claim": "Adult admission on the Whale Watch Kaikoura Ocean Cabin tour is NZ$175.",
+    "url": "https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/"
+  },
+  {
+    "verdict": "UNVERIFIABLE",
+    "confidence": 0,
+    "claim": "The Milford Track is closed for the 2026-27 season.",
+    "url": "https://www.doc.govt.nz/parks-and-recreation/tracks-and-walks/milford-track/"
+  },
+  {
+    "verdict": "DRIFTED",
+    "confidence": 0.4,
+    "claim": "Child admission on the Ocean Cabin tour is NZ$85.",
+    "url": "https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/"
+  }
+]

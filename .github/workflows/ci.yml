@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - run: npx tsc --noEmit
+
+  dogfood-action:
+    # Runs our own action against a fixture with no failing verdict above the
+    # default confidence floor. The action exits non-zero on a failing
+    # verdict, which would fail this step (and the job) on its own — so this
+    # job passing IS the assertion that a clean verdicts file exits 0.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./action
+        with:
+          verdicts: .github/fixtures/passing-verdicts.json
+          confidence-floor: "0.75"
