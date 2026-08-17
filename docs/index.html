@@ -8,33 +8,41 @@
 <link rel="canonical" href="https://claimrot.github.io/claimrot/">
 <link rel="icon" href="assets/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="assets/icon.png">
-<meta name="theme-color" content="#fafaf9">
+<meta name="theme-color" content="#f5f1ea">
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="claimrot">
 <meta property="og:url" content="https://claimrot.github.io/claimrot/">
-<meta property="og:title" content="claimrot — the link still works, the claim doesn't">
+<meta property="og:title" content="claimrot — your citation still opens, its claim may not">
 <meta property="og:description" content="Re-checks the claims your docs cite against the pages they cite. Tells you what drifted, and says UNVERIFIABLE rather than guessing when it goes blind.">
 <meta property="og:image" content="https://claimrot.github.io/claimrot/assets/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="claimrot: The link still works. The claim doesn't.">
+<meta property="og:image:alt" content="claimrot: your citation still opens, its claim may not.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="claimrot — the link still works, the claim doesn't">
+<meta name="twitter:title" content="claimrot — your citation still opens, its claim may not">
 <meta name="twitter:description" content="Re-checks the claims your docs cite against the pages they cite. Tells you what drifted, and says UNVERIFIABLE rather than guessing when it goes blind.">
 <meta name="twitter:image" content="https://claimrot.github.io/claimrot/assets/og.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <a class="skip" href="#main">Skip to content</a>
 
+<svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
+  <symbol id="i-link" viewBox="0 0 24 24">
+    <path d="M9.5 14.5 14.5 9.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+    <path d="M11 6.5 12.8 4.7a4.6 4.6 0 0 1 6.5 6.5L17.5 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+    <path d="M13 17.5l-1.8 1.8a4.6 4.6 0 0 1-6.5-6.5L6.5 11" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+  </symbol>
+</svg>
+
 <header class="bar">
   <a class="wordmark" href="./">
-    <img src="assets/logo-sm.webp" alt="" width="44" height="25">
+    <svg class="wordmark__mark" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-link"/></svg>
     <span>claimrot</span>
   </a>
   <nav>
@@ -47,31 +55,57 @@
 <main id="main">
 
 <section class="hero">
-  <h1>The link still works.<br><span class="rot">The claim doesn&rsquo;t.</span></h1>
-  <div class="decay" aria-hidden="true"></div>
-  <p class="lede">
-    You cited a page. Months later the page changed a number. No link died, no
-    build broke, nothing told you &mdash; and your documentation now says
-    something false with a citation attached.
-  </p>
-  <p class="lede">
-    claimrot re-reads the sources you cite and reports the claims that stopped
-    being true.
-  </p>
+  <h1>Your citation still opens.<br>Its claim may not.</h1>
 
-  <figure class="receipt">
-    <figcaption>Real output. Not an illustration.</figcaption>
-<pre><code><span class="c">$ claimrot report</span>
+  <div class="drift">
+    <figure class="snap">
+      <figcaption>When you published</figcaption>
+      <div class="win" aria-hidden="true">
+        <div class="win__bar"><i></i><i></i><i></i></div>
+        <div class="win__body">
+          <svg class="win__link" viewBox="0 0 24 24"><use href="#i-link"/></svg>
+          <div class="win__lines"><span></span><span></span><span></span></div>
+        </div>
+      </div>
+      <p class="amount">NZ$170</p>
+    </figure>
 
-<span class="v-drift">DRIFTED</span>  <span class="c">(confidence 1.00, checked 2026-08-17)</span>
-  published: Adult admission on the Ocean Cabin tour is NZ$170.
-  source:    https://whalewatch.co.nz/&hellip;/whale-watch-tour/
-  now:       "Adult" = 175
-  why:       "Adult" now reads 175, expected 170</code></pre>
-  </figure>
+    <div class="span">
+      <p class="span__label"><span>18 months pass</span></p>
+      <img class="span__art" src="assets/decay.webp" alt="" width="1000" height="303">
+      <div class="span__axis" aria-hidden="true"></div>
+      <ol class="span__ticks">
+        <li>0</li><li>3M</li><li>6M</li><li>9M</li><li>12M</li><li>15M</li><li>18M</li>
+      </ol>
+    </div>
+
+    <figure class="snap snap--now">
+      <figcaption>Source today</figcaption>
+      <div class="win" aria-hidden="true">
+        <div class="win__bar"><i></i><i></i><i></i></div>
+        <div class="win__body">
+          <svg class="win__link" viewBox="0 0 24 24"><use href="#i-link"/></svg>
+          <div class="win__lines"><span></span><span></span><span></span></div>
+        </div>
+      </div>
+      <p class="amount">NZ$175</p>
+      <p class="badge">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.8 21.2 20H2.8L12 3.8Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4.2M12 16.6v.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Drifted
+      </p>
+    </figure>
+  </div>
+
+  <p class="tagline">Catch factual drift before your readers do.</p>
+
+  <a class="cta" href="https://github.com/claimrot/claimrot">
+    <svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+    View on GitHub
+  </a>
 </section>
 
 <section class="band">
+  <p class="eyebrow">The third answer</p>
   <h2>Four answers, not two</h2>
   <p>
     Most monitors diff a page against its last snapshot and tell you
@@ -112,6 +146,7 @@
 </section>
 
 <section>
+  <p class="eyebrow">Mechanism</p>
   <h2>How a check runs</h2>
   <ol class="steps">
     <li>
@@ -148,9 +183,21 @@
       </p>
     </li>
   </ol>
+
+  <figure class="receipt">
+    <figcaption>Real output. Not an illustration.</figcaption>
+<pre><code><span class="c">$ claimrot report</span>
+
+<span class="v-drift">DRIFTED</span>  <span class="c">(confidence 1.00, checked 2026-08-17)</span>
+  published: Adult admission on the Ocean Cabin tour is NZ$170.
+  source:    https://whalewatch.co.nz/&hellip;/whale-watch-tour/
+  now:       "Adult" = 175
+  why:       "Adult" now reads 175, expected 170</code></pre>
+  </figure>
 </section>
 
 <section class="band" id="start">
+  <p class="eyebrow">Get started</p>
   <h2>Quickstart</h2>
   <p>
     Node 22 or newer. Only <code>ingest</code> needs a model, and by default it
@@ -189,6 +236,7 @@ npm run cli -- report</code></pre>
 </section>
 
 <section>
+  <p class="eyebrow">Honesty</p>
   <h2>What it can&rsquo;t do</h2>
   <p>
     Worth knowing before you rely on it. The full list lives in the

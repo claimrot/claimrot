@@ -1,20 +1,22 @@
-/* claimrot — palette taken from the mark: the intact link, the rotting one. */
+/* claimrot — warm press stock, heavy condensed headlines, rust for anything
+   that has gone wrong. The mark is a link; the hero is that link rotting. */
 :root {
-  --ink:     #16202b;
-  --link:    #1d2a38;
-  --rot:     #c0562c;  /* brand rust: display sizes and non-text accents only */
-  --rot-ink: #a94b26;  /* rust at body/small sizes — 5.0:1 on --band, 5.4:1 on --paper */
-  --paper:   #fafaf9;
-  --band:    #f2f1ee;
-  --muted:   #5c636c;  /* 5.4:1 on --band; #6e7681 read 4.07:1 and failed AA */
-  --rule:    #e3e1dd;
+  --paper:    #f5f1ea;  /* warm cream press stock */
+  --band:     #ece6db;  /* alternating section */
+  --card:     #faf8f4;  /* the two snapshot cards */
+  --ink:      #1c1b19;  /* 15.3:1 on --paper */
+  --rust:     #c2542a;  /* brand: display sizes, fills and rules only */
+  --rust-ink: #a8461f;  /* rust at body/small sizes — 5.2:1 on --paper */
+  --muted:    #635d53;  /* 5.5:1 on --paper, 5.0:1 on --band */
+  --rule:     #ddd5c8;
 
-  --display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --display: "Anton", "Haettenschweiler", "Arial Narrow", sans-serif;
   --body:    "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --mono:    "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
   --measure: 34rem;  /* prose: ~70 characters */
-  --wide:    46rem;  /* code, receipts — the widest thing on the page */
+  --wide:    52rem;  /* code, receipts, the drift diagram */
+  --hero:    60rem;  /* the headline wants one more line-length than prose does */
   --pad: clamp(1.25rem, 5vw, 3rem);
 }
 
@@ -31,12 +33,14 @@ body {
 }
 
 a {
-  color: var(--link);
+  color: var(--ink);
   text-decoration-color: var(--rule);
   transition: text-decoration-color 160ms ease-out;
 }
-a:hover { text-decoration-color: var(--rot); }
-:focus-visible { outline: 2px solid var(--rot); outline-offset: 3px; }
+a:hover { text-decoration-color: var(--rust); }
+:focus-visible { outline: 2px solid var(--rust); outline-offset: 3px; }
+
+code { font-family: var(--mono); font-size: 0.92em; }
 
 /* Keyboard users land on the nav first; let them jump past it. */
 .skip {
@@ -50,8 +54,6 @@ a:hover { text-decoration-color: var(--rot); }
 }
 .skip:focus { left: 0.5rem; top: 0.5rem; }
 
-code { font-family: var(--mono); font-size: 0.92em; }
-
 /* ---- top bar ---------------------------------------------------------- */
 
 .bar {
@@ -60,21 +62,20 @@ code { font-family: var(--mono); font-size: 0.92em; }
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
-  padding-block: 1.1rem;
+  padding-block: 1.4rem;
   padding-inline: var(--pad);
-  border-bottom: 1px solid var(--rule);
 }
 
 .wordmark {
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
-  font: 700 1.05rem/1 var(--display);
-  letter-spacing: -0.01em;
+  gap: 0.55rem;
+  font: 400 1.55rem/1 var(--display);
+  letter-spacing: 0.01em;
   text-decoration: none;
   color: var(--ink);
 }
-.wordmark img { display: block; height: 1.5rem; width: auto; }
+.wordmark__mark { width: 1.6rem; height: 1.6rem; color: var(--ink); }
 
 .bar nav { display: flex; gap: 1.4rem; font-size: 0.95rem; }
 
@@ -83,7 +84,7 @@ code { font-family: var(--mono); font-size: 0.92em; }
 main { display: block; }
 
 section {
-  padding-block: clamp(3rem, 8vw, 5.5rem);
+  padding-block: clamp(3.5rem, 8vw, 6rem);
   padding-inline: var(--pad);
 }
 section > * { max-width: var(--measure); }
@@ -93,24 +94,35 @@ section > * { max-width: var(--measure); }
   border-block: 1px solid var(--rule);
 }
 
-h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: -0.02em; }
+h1, h2, h3 { font-family: var(--display); font-weight: 400; }
 
 h2 {
-  font-size: clamp(1.6rem, 3.6vw, 2.1rem);
-  line-height: 1.15;
-  margin: 0 0 1.1rem;
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 1;
+  letter-spacing: 0.005em;
+  margin: 0 0 1.2rem;
 }
 
 h3 {
-  font-size: 1.06rem;
-  letter-spacing: -0.01em;
-  margin: 0 0 0.35rem;
+  font-size: 1.25rem;
+  letter-spacing: 0.01em;
+  margin: 0 0 0.4rem;
 }
 
 p { margin: 0 0 1.05rem; }
 
+/* Section eyebrow: names the section's job, in the same mono voice the
+   diagram labels use, so the page has one system of small caps and not two. */
+.eyebrow {
+  font: 500 0.72rem/1 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--rust-ink);
+  margin: 0 0 0.75rem;
+}
+
 .aside {
-  border-left: 2px solid var(--rot);
+  border-left: 2px solid var(--rust);
   padding-left: 1rem;
   color: var(--muted);
   margin-top: 1.8rem;
@@ -119,43 +131,196 @@ p { margin: 0 0 1.05rem; }
 
 /* ---- hero -------------------------------------------------------------- */
 
-.hero { padding-top: clamp(3rem, 9vw, 6rem); }
+.hero {
+  padding-block: clamp(1.5rem, 4vw, 2.75rem) clamp(3rem, 6vw, 4.25rem);
+  text-align: center;
+}
+.hero > * { max-width: none; }
 
 h1 {
-  font-size: clamp(2.4rem, 7.2vw, 4.15rem);
-  line-height: 1.02;
-  margin: 0 0 0.85rem;
-  max-width: 15ch;
+  font-size: clamp(2.3rem, 6.6vw, 4.7rem);
+  line-height: 0.96;
+  letter-spacing: 0.005em;
+  margin: 0 auto 2.5rem;
+  /* No max-width: the <br> places the only break. A character cap here fought
+     it and folded "opens." onto its own line. */
+  text-wrap: balance;
 }
 
-.rot { color: var(--rot); }
-
-/* The mark shows a solid link degrading into loose pixels. The rule under the
-   headline makes the same gesture: continuous at the left, granular and gone
-   by the right. Decorative only — masking the headline itself pushed its last
-   few characters under 3:1. */
-.decay {
-  height: 7px;
-  max-width: 32rem;
-  margin: 0 0 1.5rem;
-  background: repeating-linear-gradient(90deg, var(--rot) 0 7px, transparent 7px 12px);
-  -webkit-mask-image: linear-gradient(90deg, #000 0 34%, rgba(0, 0, 0, 0.8) 62%, rgba(0, 0, 0, 0.3) 85%, transparent 100%);
-          mask-image: linear-gradient(90deg, #000 0 34%, rgba(0, 0, 0, 0.8) 62%, rgba(0, 0, 0, 0.3) 85%, transparent 100%);
+/* The drift diagram: what you published, the time in between, what the source
+   says now. Three columns so the eye travels left to right through the decay
+   rather than reading it as three unrelated pictures. */
+.drift {
+  display: grid;
+  grid-template-columns: minmax(8.5rem, 12rem) minmax(0, 1fr) minmax(8.5rem, 12rem);
+  gap: clamp(1rem, 3vw, 2.5rem);
+  align-items: center;
+  /* Matches the hero column, not the prose one: the decay is the point, so it
+     gets the width, and the two snapshots stay deliberately small beside it. */
+  max-width: var(--hero);
+  margin: 0 auto;
+  text-align: left;
 }
 
-.lede { font-size: 1.13rem; }
-.hero .lede:last-of-type { color: var(--muted); }
+.snap {
+  margin: 0;
+  padding: 0.9rem 0.9rem 1.1rem;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  text-align: center;
+}
+.snap figcaption {
+  font: 500 0.66rem/1.2 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  color: var(--muted);
+  margin-bottom: 0.7rem;
+}
+.snap--now { border-color: var(--rust); }
+.snap--now figcaption { color: var(--rust-ink); }
+
+/* Browser chrome, drawn rather than screenshotted: the point is "a page", and
+   a real screenshot would date the moment the operator redesigns. */
+.win {
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--paper);
+  overflow: hidden;
+  text-align: left;
+}
+.win__bar {
+  display: flex;
+  gap: 3px;
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--rule);
+}
+.win__bar i { width: 4px; height: 4px; border-radius: 50%; background: var(--rule); }
+.win__body { display: flex; align-items: center; gap: 7px; padding: 9px 8px 11px; }
+.win__link { width: 1.5rem; height: 1.5rem; flex: none; color: var(--muted); }
+.win__lines { display: grid; gap: 4px; flex: 1; }
+.win__lines span { height: 3px; border-radius: 2px; background: var(--rule); }
+.win__lines span:first-child { width: 100%; }
+.win__lines span:nth-child(2) { width: 86%; }
+.win__lines span:last-child { width: 62%; }
+.snap--now .win__link { color: var(--rust); }
+
+.amount {
+  font: 400 clamp(1.9rem, 4.4vw, 2.6rem)/1 var(--display);
+  margin: 0.75rem 0 0;
+  letter-spacing: 0.01em;
+}
+.snap--now .amount { color: var(--rust-ink); }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.7rem 0 0;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--rust);
+  border-radius: 3px;
+  color: var(--rust-ink);
+  font: 600 0.68rem/1 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+}
+.badge svg { width: 0.85rem; height: 0.85rem; }
+
+/* The middle column: a labelled span of time, the decay itself, and a scale. */
+.span { min-width: 0; }
+
+.span__label {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 0 0 0.4rem;
+  color: var(--rust-ink);
+}
+.span__label span {
+  font: 500 0.72rem/1 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+}
+/* Rules with end-stops, so the label reads as measuring an interval rather
+   than floating above one. */
+.span__label::before, .span__label::after {
+  content: "";
+  flex: 1;
+  height: 9px;
+  border-top: 1px solid currentColor;
+}
+.span__label::before { border-left: 1px solid currentColor; }
+.span__label::after { border-right: 1px solid currentColor; }
+
+.span__art { display: block; width: 100%; height: auto; }
+
+.span__axis {
+  position: relative;
+  border-top: 1px solid var(--ink);
+  margin-top: 0.1rem;
+}
+.span__axis::before, .span__axis::after {
+  content: "";
+  position: absolute;
+  top: 0;
+}
+.span__axis::before {
+  left: 0;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--ink);
+  transform: translate(-1px, -3px);
+}
+.span__axis::after {
+  right: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 7px solid var(--ink);
+  transform: translateY(-4px);
+}
+
+.span__ticks {
+  display: flex;
+  justify-content: space-between;
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 0 0;
+  font: 400 0.68rem/1 var(--mono);
+  color: var(--muted);
+}
+
+/* ---- tagline + call to action ------------------------------------------ */
+
+.tagline {
+  margin: 2.4rem auto 1.4rem;
+  font-size: 1.13rem;
+  color: var(--ink);
+}
+
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1.5rem;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: background 160ms ease-out;
+}
+.cta:hover { background: #33302c; }
+.cta svg { width: 1.15rem; height: 1.15rem; }
 
 /* ---- the receipt ------------------------------------------------------- */
 
-.receipt {
-  margin: 2.6rem 0 0;
-  max-width: var(--wide);
-}
+.receipt { margin: 2.6rem 0 0; max-width: var(--wide); }
 .receipt figcaption {
-  font: 500 0.78rem/1 var(--mono);
+  font: 500 0.72rem/1 var(--mono);
   text-transform: uppercase;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.14em;
   color: var(--muted);
   margin-bottom: 0.7rem;
 }
@@ -163,9 +328,10 @@ h1 {
 pre {
   margin: 0;
   padding: 1.15rem 1.25rem;
-  background: #fff;
+  background: var(--card);
   border: 1px solid var(--rule);
-  border-left: 3px solid var(--link);
+  border-left: 3px solid var(--ink);
+  border-radius: 3px;
   overflow-x: auto;
   font: 400 0.875rem/1.6 var(--mono);
 }
@@ -174,8 +340,8 @@ pre .c { color: var(--muted); }
 
 /* ---- verdicts ---------------------------------------------------------- */
 
-.v-hold  { color: var(--link); }
-.v-drift { color: var(--rot-ink); }
+.v-hold  { color: var(--ink); }
+.v-drift { color: var(--rust-ink); }
 .v-unver { color: var(--muted); }
 
 .verdicts { margin: 2rem 0 0; display: grid; gap: 0; }
@@ -215,10 +381,10 @@ dd { margin: 0; }
 .steps li:last-child { border-bottom: 1px solid var(--rule); }
 .steps h3::before {
   content: counter(step, decimal-leading-zero);
-  font: 500 0.78rem/1 var(--mono);
-  color: var(--rot-ink);
+  font: 500 0.8rem/1 var(--mono);
+  color: var(--rust-ink);
   margin-right: 0.75rem;
-  vertical-align: 0.12em;
+  vertical-align: 0.18em;
 }
 .steps p { margin: 0; color: var(--muted); }
 
@@ -246,6 +412,18 @@ footer a { color: var(--muted); }
 
 /* ---- narrow ------------------------------------------------------------ */
 
+/* The diagram is a left-to-right story, so below the width where three
+   columns fit it becomes a top-to-bottom one rather than three squeezed
+   columns. The cards cap their width so they do not stretch to the viewport. */
+@media (max-width: 46rem) {
+  .drift { grid-template-columns: minmax(0, 1fr); gap: 1.6rem; }
+  /* Stacked, the cards shrink-wrap their captions and come out at different
+     widths ("WHEN YOU PUBLISHED" is longer than "SOURCE TODAY"), which reads
+     as a mistake. Pin both to one width so the before/after comparison holds. */
+  .snap { width: min(15rem, 100%); margin-inline: auto; }
+  .span__ticks { font-size: 0.62rem; }
+}
+
 @media (max-width: 34rem) {
   .verdicts > div { grid-template-columns: 1fr; gap: 0.35rem; }
   .bar nav { gap: 1rem; font-size: 0.9rem; }
@@ -255,9 +433,14 @@ footer a { color: var(--muted); }
    selectors that declare their own padding earlier, and an equal-specificity
    rule later in the file would win. Moving this up silently un-centres the
    footer. */
-@media (min-width: 58rem) {
+@media (min-width: 68rem) {
+  /* One rag for the whole page. Every band is padded to the same --hero
+     column and the content inside caps itself (--measure for prose, --wide
+     for code), so the wordmark, the hero's first card, every heading and
+     every code block start on the same left edge. Padding the bar to a
+     narrower column than the hero put the wordmark 64px inside the diagram. */
   .bar, section, footer {
-    padding-inline: max(var(--pad), calc((100% - var(--wide)) / 2));
+    padding-inline: max(var(--pad), calc((100% - var(--hero)) / 2));
   }
 }
 

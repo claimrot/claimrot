@@ -2,54 +2,129 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; }
   body {
     width: 1200px;
     min-height: 630px;
-    background: #fafaf9;
-    color: #16202b;
-    font-family: "Bricolage Grotesque", sans-serif;
-    padding: 78px 80px;
+    background: #f5f1ea;
+    color: #1c1b19;
+    font-family: "Anton", sans-serif;
+    padding: 74px 66px;
   }
-  .mark { display: flex; align-items: center; gap: 16px; }
-  .mark img { height: 54px; }
-  .mark span { font-size: 34px; font-weight: 700; letter-spacing: -0.01em; }
+  .mark { display: flex; align-items: center; gap: 13px; }
+  .mark svg { width: 40px; height: 40px; }
+  .mark span { font-size: 38px; letter-spacing: 0.01em; }
+
   h1 {
-    margin-top: 92px;
-    font-size: 76px;
-    font-weight: 700;
-    line-height: 1.02;
-    letter-spacing: -0.025em;
-    max-width: 16ch;
+    margin-top: 26px;
+    font-size: 66px;
+    line-height: 0.95;
+    letter-spacing: 0.005em;
+    text-align: center;
   }
-  .rot { color: #c0562c; }
-  .decay {
-    height: 11px;
-    width: 620px;
-    margin-top: 24px;
-    background: repeating-linear-gradient(90deg, #c0562c 0 11px, transparent 11px 19px);
-    -webkit-mask-image: linear-gradient(90deg, #000 0 34%, rgba(0,0,0,.8) 62%, rgba(0,0,0,.3) 85%, transparent 100%);
-            mask-image: linear-gradient(90deg, #000 0 34%, rgba(0,0,0,.8) 62%, rgba(0,0,0,.3) 85%, transparent 100%);
+
+  .drift {
+    display: grid;
+    grid-template-columns: 178px 1fr 178px;
+    gap: 34px;
+    align-items: center;
+    margin-top: 30px;
   }
-  .foot {
-    margin-top: 70px;
-    font-family: "IBM Plex Mono", monospace;
-    font-size: 22px;
-    line-height: 1.4;
-    color: #5c636c;
-    letter-spacing: 0.02em;
+  .snap {
+    padding: 12px 12px 13px;
+    background: #faf8f4;
+    border: 1px solid #ddd5c8;
+    border-radius: 4px;
+    text-align: center;
   }
+  .snap p.cap {
+    font: 500 11px/1.2 "IBM Plex Mono", monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.13em;
+    color: #635d53;
+    margin-bottom: 11px;
+  }
+  .snap .amount { font-size: 34px; margin-top: 9px; letter-spacing: 0.01em; }
+  .now { border-color: #c2542a; }
+  .now p.cap { color: #a8461f; }
+  .now .amount { color: #a8461f; }
+
+  .win { border: 1px solid #ddd5c8; border-radius: 3px; background: #f5f1ea; overflow: hidden; }
+  .win .bar { display: flex; gap: 4px; padding: 6px 7px; border-bottom: 1px solid #ddd5c8; }
+  .win .bar i { width: 5px; height: 5px; border-radius: 50%; background: #ddd5c8; display: block; }
+  .win .body { display: flex; align-items: center; gap: 9px; padding: 11px 10px 13px; }
+  .win .body svg { width: 26px; height: 26px; flex: none; color: #635d53; }
+  .now .win .body svg { color: #c2542a; }
+  .win .lines { display: grid; gap: 5px; flex: 1; }
+  .win .lines span { height: 4px; border-radius: 2px; background: #ddd5c8; display: block; }
+  .win .lines span:nth-child(2) { width: 86%; }
+  .win .lines span:nth-child(3) { width: 62%; }
+
+  .span img { display: block; width: 100%; height: auto; }
+  .axis { border-top: 1px solid #1c1b19; margin-top: 3px; }
+  .ticks {
+    display: flex; justify-content: space-between; list-style: none;
+    padding: 7px 0 0; font: 400 12px/1 "IBM Plex Mono", monospace; color: #635d53;
+  }
+  .label {
+    display: flex; align-items: center; gap: 11px; color: #a8461f; margin-bottom: 7px;
+  }
+  .label span {
+    font: 500 12px/1 "IBM Plex Mono", monospace;
+    text-transform: uppercase; letter-spacing: 0.14em; white-space: nowrap;
+  }
+  .label::before, .label::after {
+    content: ""; flex: 1; height: 10px; border-top: 1px solid currentColor;
+  }
+  .label::before { border-left: 1px solid currentColor; }
+  .label::after { border-right: 1px solid currentColor; }
 </style>
 </head>
 <body>
+  <svg width="0" height="0" style="position:absolute">
+    <symbol id="i-link" viewBox="0 0 24 24">
+      <path d="M9.5 14.5 14.5 9.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+      <path d="M11 6.5 12.8 4.7a4.6 4.6 0 0 1 6.5 6.5L17.5 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+      <path d="M13 17.5l-1.8 1.8a4.6 4.6 0 0 1-6.5-6.5L6.5 11" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+    </symbol>
+  </svg>
+
   <div class="mark">
-    <img src="logo.png" alt="">
+    <svg viewBox="0 0 24 24"><use href="#i-link"/></svg>
     <span>claimrot</span>
   </div>
-  <h1>The link still works.<br><span class="rot">The claim doesn&rsquo;t.</span></h1>
-  <div class="decay"></div>
-  <p class="foot">Re-checks the claims your docs cite against the pages they cite.</p>
+
+  <h1>Your citation still opens.<br>Its claim may not.</h1>
+
+  <div class="drift">
+    <div class="snap">
+      <p class="cap">When you published</p>
+      <div class="win">
+        <div class="bar"><i></i><i></i><i></i></div>
+        <div class="body"><svg viewBox="0 0 24 24"><use href="#i-link"/></svg>
+          <div class="lines"><span></span><span></span><span></span></div></div>
+      </div>
+      <p class="amount">NZ$170</p>
+    </div>
+
+    <div class="span">
+      <p class="label"><span>18 months pass</span></p>
+      <img src="decay.webp" alt="">
+      <div class="axis"></div>
+      <ol class="ticks"><li>0</li><li>3M</li><li>6M</li><li>9M</li><li>12M</li><li>15M</li><li>18M</li></ol>
+    </div>
+
+    <div class="snap now">
+      <p class="cap">Source today</p>
+      <div class="win">
+        <div class="bar"><i></i><i></i><i></i></div>
+        <div class="body"><svg viewBox="0 0 24 24"><use href="#i-link"/></svg>
+          <div class="lines"><span></span><span></span><span></span></div></div>
+      </div>
+      <p class="amount">NZ$175</p>
+    </div>
+  </div>
 </body>
 </html>

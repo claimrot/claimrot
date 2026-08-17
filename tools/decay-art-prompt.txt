@@ -1,0 +1,22 @@
+A horizontal sequence of five hand-drawn wall calendars in a warm letterpress
+editorial illustration style, showing progressive decay from left to right.
+
+The leftmost calendar is crisp and intact: a rust-orange header bar across the
+top, small black spiral binding rings above it, and a clean grid of empty
+squares below on off-white paper. Each successive calendar to the right is more
+eroded than the last — the paper edges tear and crumble, the grid breaks apart,
+holes eat through the sheet. The two rightmost calendars disintegrate almost
+completely into a scattering of small rust-orange squares, specks and dots that
+drift rightward and thin out to nothing at the right edge.
+
+Palette strictly limited to: warm cream background, rust orange, charcoal
+black, and light warm grey. Subtle paper grain and ink texture, like a
+risograph or letterpress print. Flat 2D editorial illustration: no perspective,
+no gradient shading, no drop shadows, no 3D.
+
+CRITICAL: absolutely no text, no letters, no numbers, no dates, no writing of
+any kind anywhere in the image. The calendars must be blank grids only.
+
+Plain flat cream background, edge to edge, with no border, no frame, and no
+vignette. Compose as a wide panoramic banner, roughly 3:1 aspect ratio, with
+the calendars filling the width and generous cream space above and below.
