@@ -2,9 +2,9 @@
   "name": "claimrot",
   "version": "0.1.0",
   "type": "module",
-  "bin": { "claimrot": "./dist/cli.js" },
+  "bin": { "claimrot": "./dist/src/cli.js" },
   "scripts": {
-    "build": "tsc && cp src/db/schema.sql dist/db/",
+    "build": "tsc && cp src/db/schema.sql dist/src/db/",
     "test": "vitest run",
     "cli": "tsx src/cli.ts"
   },
