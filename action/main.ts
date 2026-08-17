@@ -90,14 +90,36 @@ function writeStepSummary(text: string): void {
   }
 }
 
+/**
+ * A malformed floor (typo, stray quote, out-of-range value) must NOT silently
+ * disable the gate. `Number("high")` is NaN, and every `confidence >= NaN`
+ * comparison is false — so an unvalidated floor would make decideExit's
+ * filter match nothing and the action would exit 0 on every run, including a
+ * confident DRIFTED. That is a false assurance, not an honest absence like a
+ * missing verdicts file, so we fall back to the documented default and warn
+ * loudly rather than staying quiet.
+ */
+export function parseFloor(raw: string | undefined): { floor: number; warning: string | null } {
+  if (raw === undefined || raw.trim() === "") return { floor: 0.75, warning: null };
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0 || n > 1) {
+    return {
+      floor: 0.75,
+      warning: `confidence-floor "${raw}" is not a number between 0 and 1; using the default 0.75.`,
+    };
+  }
+  return { floor: n, warning: null };
+}
+
 function main(): void {
   const path = process.env.INPUT_VERDICTS ?? "claimrot-verdicts.json";
-  const floor = Number(process.env["INPUT_CONFIDENCE-FLOOR"] ?? "0.75");
+  const { floor, warning } = parseFloor(process.env["INPUT_CONFIDENCE-FLOOR"]);
 
   const { code, summary } = runAction(path, floor);
+  const output = warning ? `${warning}\n${summary}` : summary;
 
-  console.log(summary);
-  writeStepSummary(summary);
+  console.log(output);
+  writeStepSummary(output);
   process.exitCode = code;
 }
 
