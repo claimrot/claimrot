@@ -44,7 +44,7 @@ describe("redesign survival", () => {
     let heals = 0;
     const deps: EngineDeps = {
       run: async () => {
-        const cands = extractJsonLdCandidates(before, "price");
+        const cands = extractJsonLdCandidates(before);
         return cands.length
           ? { status: "ok", record: { url: "u", fetchedAt: "t", collectorVersion: "v", pageSignature: "", fields: { price: cands } } }
           : { status: "empty", record: { url: "u", fetchedAt: "t", collectorVersion: "v", pageSignature: "", fields: {} } };
@@ -67,7 +67,7 @@ describe("redesign survival", () => {
       run: async () => {
         runs++;
         const cands = runs === 1
-          ? extractJsonLdCandidates(after, "price")   // pre-heal: finds nothing
+          ? extractJsonLdCandidates(after)   // pre-heal: finds nothing
           : cardCandidates(after);                    // post-heal: reads the new markup
         return cands.length
           ? { status: "ok", record: { url: "u", fetchedAt: "t", collectorVersion: "v", pageSignature: "", fields: { price: cands } } }

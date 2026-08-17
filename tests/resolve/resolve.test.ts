@@ -112,10 +112,10 @@ describe("resolveCandidates", () => {
   });
 
   it("contains an assertion against retained valueText, not DRIFTED", () => {
-    // Fix 2's scar: parseRawValue used to null out valueText the moment a
-    // number was extracted, and "10:30am" parses to no number but this
-    // exercises the general contract — a candidate carrying text must still
-    // satisfy `contains` even when a numeric assertion is not in play.
+    // parseRawValue must not null out valueText the moment a number is
+    // extracted elsewhere in the payload — "10:30am" parses to no number, and
+    // this exercises the general contract: a candidate carrying text must
+    // still satisfy `contains` even when a numeric assertion is not in play.
     const departs: Assertion = {
       ...base, field: "departure_time", op: "contains",
       valueNum: null, valueText: "10:30am",
@@ -126,9 +126,10 @@ describe("resolveCandidates", () => {
   });
 
   it("drops a totally blank candidate under op: exists — blindness, never a finding", () => {
-    // Fix 3's scar: isUnparseableNumeric only guarded eq/approx/range. A
-    // blank extraction (value: null, valueText: "") under `exists` sailed
-    // through the label filter and satisfies() convicted it as DRIFTED.
+    // isUnparseableNumeric only guards eq/approx/range, so a blank extraction
+    // (value: null, valueText: "") under `exists` needs its own guard
+    // (isBlind) — without it, the label filter lets it through and
+    // satisfies() convicts it as DRIFTED.
     const exists: Assertion = {
       ...base, field: "senior_price", op: "exists", valueNum: null, valueText: null,
     };

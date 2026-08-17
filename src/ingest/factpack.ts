@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import type { Claim } from "../model/types.js";
+import { safeUrl } from "../url.js";
 
 /** Authenticated partner API — the hackathon rules require public data only. */
 const EXCLUDED_HOSTS = new Set(["api.viator.com"]);
@@ -12,9 +13,9 @@ export function readFactPack(path: string): Claim[] {
   return (pack.facts ?? []).flatMap((f: any): Claim[] => {
     const url = (f.source_url ?? "").trim();
     if (!url) return [];
-    let host: string;
-    try { host = new URL(url).host; } catch { return []; }
-    if (EXCLUDED_HOSTS.has(host)) return [];
+    const parsed = safeUrl(url);
+    if (!parsed) return [];
+    if (EXCLUDED_HOSTS.has(parsed.host)) return [];
 
     return [{
       id: `${documentId}#${f.id}`,

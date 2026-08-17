@@ -44,17 +44,19 @@ describe("scoreCandidate", () => {
   });
 
   it("refuses to clear on unit+path alone when the anchor is empty", () => {
-    // Ruling 6's renormalisation collapsed the denominator to 0.20 here, letting
-    // the two WEAKEST signals produce a confidence-1.0 verdict. Spec 4.2: path is
-    // never used alone.
+    // Naive renormalisation over available signals alone would collapse the
+    // denominator to unit+path (0.20) here, letting the two WEAKEST signals
+    // produce a confidence-1.0 verdict. Spec 4.2: path is never used alone.
     const anchorless = { ...assertion, anchorLabel: "", anchorContext: "" };
     const s = scoreCandidate(anchorless, cand({}));
     expect(s.score).toBe(0);
   });
 
   it("KNOWN GAP: a blob label containing the anchor scores as a full match", () => {
-    // Deferred to Task 5's adapter by ruling — scoring cannot separate a blob from
-    // a legitimate qualifier structurally. Documented, not accepted.
+    // Scoring alone cannot separate a blob label from a legitimate qualifier —
+    // that structural distinction needs the whole anchor set, which is why
+    // collect/studio.ts's flagBlobCandidates exists as a downstream screen.
+    // Documented here as a known gap, not accepted as correct.
     const s = scoreCandidate(assertion, cand({ label: "Adult Child Senior" }));
     expect(s.signals.labelSimilarity).toBe(1);
   });

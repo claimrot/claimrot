@@ -1,4 +1,5 @@
 import type { Assertion, Candidate, ScoredCandidate } from "../model/types.js";
+import { normalize, tokenSet } from "../text.js";
 
 export const CLEAR_THRESHOLD = 0.75;
 export const MARGIN = 0.15;
@@ -11,8 +12,6 @@ const W = {
   pathStability: 0.1,
 } as const;
 
-const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-
 /**
  * Asymmetric coverage: how much of the ANCHOR survives in the candidate.
  * Deliberately not symmetric — a candidate carrying extra qualifying detail
@@ -24,8 +23,8 @@ const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
  * the metric silently.
  */
 export function similarity(anchor: string, candidate: string): number {
-  const A = new Set(norm(anchor).split(" ").filter(Boolean));
-  const B = new Set(norm(candidate).split(" ").filter(Boolean));
+  const A = tokenSet(anchor);
+  const B = tokenSet(candidate);
   if (A.size === 0) return B.size === 0 ? 1 : 0;
   let shared = 0;
   for (const t of A) if (B.has(t)) shared++;
@@ -57,7 +56,7 @@ function pathStability(anchor: string, actual: string): number {
  * WEAKEST signals alone produce a confidence-1.0 match. Spec §4.2: path is
  * never used alone. So a score is only ever non-zero when labelSimilarity is
  * available AND the available weights total at least 0.5 — otherwise there
- * isn't enough evidence to convict, full stop (ruling 6 follow-up).
+ * isn't enough evidence to convict, full stop.
  */
 export function scoreCandidate(a: Assertion, c: Candidate): ScoredCandidate {
   const signals: ScoredCandidate["signals"] = {
@@ -66,7 +65,7 @@ export function scoreCandidate(a: Assertion, c: Candidate): ScoredCandidate {
     corroboration: null, // engine-only; unavailable at this layer, never scored 0
     unitMatch: a.unit === null || c.unit === null
       ? null
-      : (norm(a.unit) === norm(c.unit) ? 1 : 0),
+      : (normalize(a.unit) === normalize(c.unit) ? 1 : 0),
     pathStability: a.anchorPath === "" || c.path === "" ? null : pathStability(a.anchorPath, c.path),
   };
 

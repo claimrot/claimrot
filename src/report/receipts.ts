@@ -1,6 +1,15 @@
 import type Database from "better-sqlite3";
-import type { VerdictRecord } from "../model/types.js";
+import type { Verdict, VerdictRecord } from "../model/types.js";
 type Db = Database.Database;
+
+interface ReceiptRow {
+  text: string;
+  url: string;
+  verdict: Verdict;
+  confidence: number;
+  evidence: string;
+  ranAt: string;
+}
 
 /**
  * The producer half of the `claimrot report --json` / GitHub Action pair
@@ -40,12 +49,12 @@ export function renderVerdictsJson(db: Db): VerdictRecord[] {
   return rows;
 }
 
-export function renderReceipts(db: Db, verdict: string): string {
+export function renderReceipts(db: Db, verdict: Verdict): string {
   const rows = db.prepare(
     `SELECT c.text AS text, c.source_url AS url, v.verdict AS verdict,
             v.confidence AS confidence, v.evidence_json AS evidence, v.created_at AS ranAt
      FROM verdicts v JOIN claims c ON c.id = v.claim_id
-     WHERE v.verdict = ? ORDER BY v.created_at DESC`).all(verdict) as any[];
+     WHERE v.verdict = ? ORDER BY v.created_at DESC`).all(verdict) as ReceiptRow[];
 
   if (rows.length === 0) return `No ${verdict} claims.`;
 

@@ -1,6 +1,10 @@
 import type { Assertion, Candidate, Resolution } from "../model/types.js";
-import type { CollectorRecord, CollectRunResult, HealResult } from "../collect/types.js";
+import {
+  HEAL_PROMPT_MAX_CHARS,
+  type CollectorRecord, type CollectRunResult, type HealResult,
+} from "../collect/types.js";
 import { resolveCandidates } from "../resolve/resolve.js";
+import { tokenSet } from "../text.js";
 
 export interface EngineDeps {
   run: (collectorId: string, url: string) => Promise<CollectRunResult>;
@@ -16,18 +20,18 @@ const unverifiable = (reason: string): Resolution =>
 // this stays short of full confidence.
 const REMOVED_AFTER_HEAL_CONFIDENCE = 0.8;
 
+// naive singularise, layered on top of the shared tokenizer
 const normTokens = (s: string) =>
-  new Set(
-    s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(" ").filter(Boolean)
-      .map((t) => t.replace(/ies$/, "y").replace(/s$/, "")),   // naive singularise
-  );
+  new Set([...tokenSet(s)].map((t) => t.replace(/ies$/, "y").replace(/s$/, "")));
 
 /**
- * The collector names its own fields, so the field name cannot be an identifier
- * (that was the Critical). But it is still WEAK EVIDENCE, and discarding it
- * entirely let an "Adult"-labelled duration outscore a price assertion.
- * Exact key first, then fields whose name shares a token with ours, and only
- * then everything — so an unrelated field competes solely when nothing else can.
+ * Collector field names are AI-authored per prompt (collect/studio.ts's
+ * SYNONYM comment), so a field name on a record cannot be trusted as a
+ * stable identifier for "the field we asked about" — but it is still WEAK
+ * EVIDENCE, and discarding it entirely let an "Adult"-labelled duration
+ * outscore a price assertion. Exact key first, then fields whose name shares
+ * a token with ours, and only then everything — so an unrelated field
+ * competes solely when nothing else can.
  *
  * If a future adapter ever emitted an empty exact-key field alongside a
  * differently-named one holding the real candidates (e.g.
@@ -61,7 +65,7 @@ export function healPrompt(a: Assertion): string {
     `It should extract every value on the page together with the label that governs it.`,
     `Specifically, it must find the value labelled "${a.anchorLabel}"${contextClause}.`,
     `Return each candidate with its value, unit, governing label, and enclosing heading.`,
-  ].join(" ").slice(0, 1000);
+  ].join(" ").slice(0, HEAL_PROMPT_MAX_CHARS);
 }
 
 /**

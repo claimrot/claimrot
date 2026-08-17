@@ -1,7 +1,14 @@
 import type Database from "better-sqlite3";        // the Database NAMESPACE
+import type { Verdict } from "../model/types.js";
 type Db = Database.Database;                       // the connection type
 
 const BUCKETS = [7, 14, 21, 30];
+
+interface HalfLifeRow {
+  checkedAt: string;
+  verdict: Verdict;
+  ranAt: string;
+}
 
 /**
  * Drift rate as a function of claim age — the measured half-life of a published fact.
@@ -11,7 +18,7 @@ const BUCKETS = [7, 14, 21, 30];
 export function halfLife(db: Db) {
   const rows = db.prepare(
     `SELECT c.checked_at AS checkedAt, v.verdict AS verdict, v.created_at AS ranAt
-     FROM verdicts v JOIN claims c ON c.id = v.claim_id`).all() as any[];
+     FROM verdicts v JOIN claims c ON c.id = v.claim_id`).all() as HalfLifeRow[];
 
   const buckets = BUCKETS.map((maxAgeDays) => {
     const inBucket = rows.filter((r) => {

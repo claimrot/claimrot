@@ -3,11 +3,20 @@ import type { Claim, Verdict } from "../model/types.js";
 const DAY = 86_400_000;
 const plus = (now: Date, d: number) => new Date(now.getTime() + d * DAY);
 
+/** Ceiling on the exponential UNVERIFIABLE backoff, so a permanently-blind claim still gets rechecked monthly. */
+const MAX_UNVERIFIABLE_BACKOFF_DAYS = 30;
+/** Recheck cadence for a claim marked volatile in its fact pack. */
+const VOLATILE_CHECK_INTERVAL_DAYS = 7;
+/** Recheck cadence for an ordinary (non-volatile) claim. */
+const STABLE_CHECK_INTERVAL_DAYS = 90;
+
 export function nextCheckAt(
   claim: Claim, lastVerdict: Verdict | null, consecutiveUnverifiable: number, now: Date,
 ): Date {
   if (lastVerdict === "UNVERIFIABLE") {
-    const backoff = Math.min(30, 3 ** Math.max(0, consecutiveUnverifiable - 1));
+    const backoff = Math.min(
+      MAX_UNVERIFIABLE_BACKOFF_DAYS, 3 ** Math.max(0, consecutiveUnverifiable - 1),
+    );
     return plus(now, backoff);
   }
 
@@ -22,5 +31,5 @@ export function nextCheckAt(
     // Expiry is fully behind us — the claim is ordinary again.
   }
 
-  return plus(now, claim.volatile ? 7 : 90);
+  return plus(now, claim.volatile ? VOLATILE_CHECK_INTERVAL_DAYS : STABLE_CHECK_INTERVAL_DAYS);
 }

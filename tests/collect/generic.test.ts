@@ -8,7 +8,7 @@ const html = `<html><head>
 
 describe("extractJsonLdCandidates", () => {
   it("reads price and currency out of a schema.org Offer", () => {
-    const cands = extractJsonLdCandidates(html, "price");
+    const cands = extractJsonLdCandidates(html);
     expect(cands).toHaveLength(1);
     expect(cands[0].value).toBe(175);
     expect(cands[0].unit).toBe("NZD");
@@ -16,14 +16,14 @@ describe("extractJsonLdCandidates", () => {
   });
 
   it("returns [] rather than throwing on malformed JSON-LD", () => {
-    expect(extractJsonLdCandidates('<script type="application/ld+json">{oops</script>', "price")).toEqual([]);
+    expect(extractJsonLdCandidates('<script type="application/ld+json">{oops</script>')).toEqual([]);
   });
 
   it("emits candidates for a price-like field name, not only the literal 'price'", () => {
     // Real assertion fields are adult_price / child_price, never bare "price".
     // Gating on the exact string made the generic fallback — the collector that
     // serves the 352-host tail — return nothing on every real assertion.
-    const cands = extractJsonLdCandidates(html, "adult_price");
+    const cands = extractJsonLdCandidates(html);
     expect(cands).toHaveLength(1);
     expect(cands[0].value).toBe(175);
   });
@@ -33,7 +33,7 @@ describe("extractJsonLdCandidates", () => {
 <script type="application/ld+json">
 {"@context":"https://schema.org","@graph":[{"@type":"Product","name":"Ocean Cabin","offers":{"@type":"Offer","price":"175","priceCurrency":"NZD"}}]}
 </script></head><body></body></html>`;
-    const cands = extractJsonLdCandidates(graphHtml, "price");
+    const cands = extractJsonLdCandidates(graphHtml);
     expect(cands).toHaveLength(1);
     expect(cands[0].value).toBe(175);
     expect(cands[0].unit).toBe("NZD");

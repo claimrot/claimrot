@@ -1,4 +1,4 @@
-// Driver for Task 14's committed example output.
+// Driver for the committed example output (examples/output.json).
 //
 // WHY THIS SCRIPT EXISTS (not `claimrot ingest`):
 // `ingest` calls the Anthropic-backed prose->assertion normalizer, and this
@@ -15,13 +15,13 @@
 // that command resolves collector IDs via src/collect/registry.ts, whose
 // whalewatch.co.nz entry is still the placeholder "c_whalewatch" pending
 // collector-ID fill-in (see registry.ts's own comment) — not the real
-// Bright Data collector ID this probe actually created. This task's
-// concurrency lock forbids editing src/, so this script supplies the real
-// collector ID directly instead, calling the identical engine code the CLI
-// would call.
+// Bright Data collector ID this probe actually created. So this script
+// supplies the real collector ID directly instead, calling the identical
+// engine code (checkAssertion, withBlobScreening, HostQueue) the CLI would
+// call.
 //
-// Politeness: one collector, one host, requests issued serially (queue.run
-// mirrors src/net/politeness.ts's HostQueue exactly), matching docs/design.md
+// Politeness: one collector, one host, requests issued serially through the
+// same src/net/politeness.ts HostQueue the CLI uses, matching docs/design.md
 // §10's per-host concurrency-1 rule.
 //
 // Reproducing this hits the live Bright Data API (a real collector run per
@@ -33,12 +33,13 @@
 
 import { randomUUID } from "node:crypto";
 import { openDb } from "../src/db/index.js";
+import { rowToAssertion } from "../src/db/rows.js";
+import type { AssertionRow } from "../src/db/rows.js";
+import { INSERT_CLAIM_SQL, INSERT_ASSERTION_SQL, INSERT_VERDICT_SQL, UPDATE_LAST_CHECKED_SQL } from "../src/db/statements.js";
 import { checkAssertion } from "../src/engine/check.js";
 import type { EngineDeps } from "../src/engine/check.js";
-import { runCollector, healCollector, flagBlobCandidates } from "../src/collect/studio.js";
+import { runCollector, healCollector, withBlobScreening } from "../src/collect/studio.js";
 import { HostQueue } from "../src/net/politeness.js";
-import type { Candidate } from "../src/model/types.js";
-import type { CollectRunResult } from "../src/collect/types.js";
 
 const DB_PATH = "examples/demo.db";
 const ONLY = new Set(process.argv.slice(2));
@@ -90,14 +91,8 @@ async function main() {
     `INSERT OR REPLACE INTO documents (id, uri, title) VALUES (?, ?, ?)`,
   ).run(DOCUMENT_ID, SOURCE_URL, "Whale Watch Kaikoura - Ocean Cabin pricing (demo)");
 
-  const insClaim = db.prepare(
-    `INSERT OR REPLACE INTO claims
-     (id,document_id,text,source_url,ingested_at,checked_at,volatile,expires_at,status)
-     VALUES (@id,@documentId,@text,@sourceUrl,@ingestedAt,@checkedAt,@volatile,@expiresAt,@status)`);
-  const insAssertion = db.prepare(
-    `INSERT OR REPLACE INTO assertions
-     (id,claim_id,field,op,value_num,value_text,value_max,unit,tolerance,anchor_label,anchor_context,anchor_path)
-     VALUES (@id,@claimId,@field,@op,@valueNum,@valueText,@valueMax,@unit,@tolerance,@anchorLabel,@anchorContext,@anchorPath)`);
+  const insClaim = db.prepare(INSERT_CLAIM_SQL);
+  const insAssertion = db.prepare(INSERT_ASSERTION_SQL);
 
   for (const c of CLAIMS) {
     insClaim.run({
@@ -113,46 +108,26 @@ async function main() {
   console.log(`Inserted ${CLAIMS.length} claims + assertions directly (ingest's normalizer bypassed - no Anthropic key on this machine).`);
 
   // Mirror src/cli.ts's `check` command exactly: same anchor screening
-  // (flagBlobCandidates), same per-host serialization (HostQueue), same
+  // (withBlobScreening), same per-host serialization (HostQueue), same
   // EngineDeps wiring to the real collector + heal, same verdict insert shape.
   const queue = new HostQueue();
   const anchorLabels = CLAIMS.map((c) => c.anchorLabel);
+  const wrapRun: EngineDeps["run"] = withBlobScreening(runCollector, anchorLabels);
 
-  const wrapRun = (): EngineDeps["run"] => async (id, url) => {
-    const result: CollectRunResult = await runCollector(id, url);
-    if (result.status !== "ok") return result;
-    const fields: Record<string, Candidate[]> = {};
-    for (const [k, v] of Object.entries(result.record.fields)) {
-      const kept = flagBlobCandidates(v, anchorLabels);
-      if (kept.length > 0) fields[k] = kept;
-    }
-    const record = { ...result.record, fields };
-    return Object.keys(fields).length > 0
-      ? { status: "ok" as const, record }
-      : { status: "empty" as const, record };
-  };
-
-  const insVerdict = db.prepare(
-    `INSERT INTO verdicts (id,check_id,claim_id,verdict,confidence,evidence_json,created_at)
-     VALUES (?,?,?,?,?,?,?)`);
-  const updLastChecked = db.prepare(`UPDATE claims SET last_checked_at = ? WHERE id = ?`);
+  const insVerdict = db.prepare(INSERT_VERDICT_SQL);
+  const updLastChecked = db.prepare(UPDATE_LAST_CHECKED_SQL);
 
   const toCheck = ONLY.size > 0
     ? CLAIMS.filter((c) => [...ONLY].some((s) => c.id.endsWith(s)))
     : CLAIMS;
 
   for (const c of toCheck) {
-    const claimRow = db.prepare(`SELECT * FROM assertions WHERE claim_id = ?`).get(c.id) as any;
-    const assertion = {
-      id: claimRow.id, claimId: c.id, field: claimRow.field, op: claimRow.op,
-      valueNum: claimRow.value_num, valueText: claimRow.value_text, valueMax: claimRow.value_max,
-      unit: claimRow.unit, tolerance: claimRow.tolerance, anchorLabel: claimRow.anchor_label,
-      anchorContext: claimRow.anchor_context, anchorPath: claimRow.anchor_path,
-    };
+    const claimRow = db.prepare(`SELECT * FROM assertions WHERE claim_id = ?`).get(c.id) as AssertionRow;
+    const assertion = rowToAssertion(claimRow);
     console.log(`\n--- checking ${c.id} ---`);
     const resolution = await queue.run(SOURCE_URL, () =>
       checkAssertion(assertion, COLLECTOR_ID, SOURCE_URL, {
-        run: wrapRun(),
+        run: wrapRun,
         heal: (id, prompt, url) => {
           console.log(`  [heal] prompt: ${prompt}`);
           return healCollector(id, prompt, { url, autoApprove: true });

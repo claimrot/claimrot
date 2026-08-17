@@ -88,6 +88,13 @@ function writeStepSummary(text: string): void {
   }
 }
 
+// Deliberately independent of resolve/score.ts's CLEAR_THRESHOLD: that
+// threshold decides whether a candidate anchors well enough to be scored at
+// all, while this is the action's own policy knob for how confident a
+// DRIFTED/REMOVED finding must be before it fails a build. They happen to
+// share a value today; nothing requires them to stay in sync.
+const DEFAULT_CONFIDENCE_FLOOR = 0.75;
+
 /**
  * A malformed floor (typo, stray quote, out-of-range value) must NOT silently
  * disable the gate. `Number("high")` is NaN, and every `confidence >= NaN`
@@ -98,12 +105,12 @@ function writeStepSummary(text: string): void {
  * loudly rather than staying quiet.
  */
 export function parseFloor(raw: string | undefined): { floor: number; warning: string | null } {
-  if (raw === undefined || raw.trim() === "") return { floor: 0.75, warning: null };
+  if (raw === undefined || raw.trim() === "") return { floor: DEFAULT_CONFIDENCE_FLOOR, warning: null };
   const n = Number(raw);
   if (!Number.isFinite(n) || n < 0 || n > 1) {
     return {
-      floor: 0.75,
-      warning: `confidence-floor "${raw}" is not a number between 0 and 1; using the default 0.75.`,
+      floor: DEFAULT_CONFIDENCE_FLOOR,
+      warning: `confidence-floor "${raw}" is not a number between 0 and 1; using the default ${DEFAULT_CONFIDENCE_FLOOR}.`,
     };
   }
   return { floor: n, warning: null };

@@ -1,8 +1,13 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { Candidate } from "../model/types.js";
-import type { CollectRunResult, CollectorRecord, Exec, HealResult } from "./types.js";
+import {
+  HEAL_PROMPT_MAX_CHARS,
+  type CollectRunResult, type CollectorRecord, type Exec, type HealResult,
+} from "./types.js";
 import { parseRawValue } from "./parse.js";
+import { tokenSet, isTokenSubset } from "../text.js";
+import type { EngineDeps } from "../engine/check.js";
 
 const pexec = promisify(execFile);
 
@@ -108,8 +113,8 @@ export async function healCollector(
   opts: { url?: string; autoApprove?: boolean; exec?: Exec } = {},
 ): Promise<HealResult> {
   const exec = opts.exec ?? defaultExec;
-  // Positional prompt, capped at 1000 chars by the CLI.
-  const args = ["scraper", "heal", collectorId, prompt.slice(0, 1000), "--json"];
+  // Positional prompt, capped by the CLI.
+  const args = ["scraper", "heal", collectorId, prompt.slice(0, HEAL_PROMPT_MAX_CHARS), "--json"];
   if (opts.url) args.push("--url", opts.url);
   // --auto-save matters: without it a healed template may not persist.
   if (opts.autoApprove) args.push("--auto-approve", "--auto-save");
@@ -146,18 +151,11 @@ export async function healCollector(
  * "Adult Child Senior" are structurally identical against a one-token anchor —
  * so it is caught here, where the whole anchor set is visible.
  */
-const isTokenSubset = (a: Set<string>, b: Set<string>): boolean => {
-  for (const t of a) if (!b.has(t)) return false;
-  return true;
-};
-
 export function flagBlobCandidates(cands: Candidate[], anchorLabels: string[]): Candidate[] {
-  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-  const tokenize = (s: string) => new Set(norm(s).split(" ").filter(Boolean));
   return cands.filter((c) => {
-    const labelTokens = tokenize(c.label);
+    const labelTokens = tokenSet(c.label);
     const matched = anchorLabels
-      .map((a) => tokenize(a))
+      .map((a) => tokenSet(a))
       .filter((at) => at.size > 0 && isTokenSubset(at, labelTokens));
     // Collapse a matched anchor into a larger matched anchor ONLY when that
     // larger anchor covers the whole candidate label. "Adult" folds into
@@ -173,4 +171,35 @@ export function flagBlobCandidates(cands: Candidate[], anchorLabels: string[]): 
     );
     return maximal.length <= 1;   // 0 or 1 distinct anchor is fine; 2+ is a blob
   });
+}
+
+/**
+ * Wraps a raw collector run (whatever resolves collectorId+url to a
+ * CollectRunResult — a Bright Data run, the generic JSON-LD fetch, or a test
+ * fake) so every "ok" record is screened through flagBlobCandidates before
+ * the engine ever sees it, using the FULL anchor set for that source URL —
+ * flagBlobCandidates needs more than the one assertion checkAssertion sees at
+ * a time. A field emptied entirely by screening reports "empty", which
+ * correctly routes to heal rather than a false verdict. Shared by src/cli.ts
+ * (which additionally routes the "generic" collector ID to a direct fetch)
+ * and examples/produce-output.ts (which always targets one real collector).
+ */
+export function withBlobScreening(
+  run: (collectorId: string, url: string) => Promise<CollectRunResult>,
+  anchors: string[],
+): EngineDeps["run"] {
+  return async (collectorId, url) => {
+    const result = await run(collectorId, url);
+    if (result.status !== "ok") return result;
+
+    const fields: Record<string, Candidate[]> = {};
+    for (const [k, v] of Object.entries(result.record.fields)) {
+      const kept = flagBlobCandidates(v, anchors);
+      if (kept.length > 0) fields[k] = kept;
+    }
+    const record = { ...result.record, fields };
+    return Object.keys(fields).length > 0
+      ? { status: "ok" as const, record }
+      : { status: "empty" as const, record };
+  };
 }

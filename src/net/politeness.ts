@@ -1,3 +1,16 @@
+import { safeUrl } from "../url.js";
+
+/**
+ * Spec §10: identify ourselves with a contact URL. This is aimed at the exact
+ * endpoint whose whole purpose is establishing that we behave well
+ * (robots.txt, fetched by src/cli.ts's fetchRobots), so it must not be the
+ * one anonymous request an operator sees in their logs. The generic (JSON-LD)
+ * collector fallback — collect/generic.ts's runGeneric — reuses this same UA,
+ * since it also fetches pages directly rather than going through the Bright
+ * Data CLI.
+ */
+export const ROBOTS_UA = "claimrot/0.1 (+https://github.com/claimrot/claimrot)";
+
 /**
  * One in-flight request per host, spaced by minIntervalMs (~0.8 req/s default).
  * Parallelism is ACROSS hosts only. A monitor that hammers 352 hosts is a DDoS
@@ -9,12 +22,14 @@ export class HostQueue {
   constructor(private readonly minIntervalMs = 1250) {}
 
   run<T>(url: string, fn: () => Promise<T>): Promise<T> {
-    let host: string;
-    try {
-      host = new URL(url).host;
-    } catch (err) {
-      return Promise.reject(err);
+    const parsed = safeUrl(url);
+    if (!parsed) {
+      // Must reject, not throw synchronously: callers build arrays of run()
+      // promises, and a raw throw here would abort array construction and
+      // kill scheduling for every other host in the batch.
+      return Promise.reject(new TypeError(`Invalid URL: ${url}`));
     }
+    const host = parsed.host;
     const prior = this.tails.get(host) ?? Promise.resolve();
     const next = prior
       .catch(() => {})

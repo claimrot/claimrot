@@ -1,6 +1,9 @@
 import type { Assertion, Candidate, Resolution, ScoredCandidate } from "../model/types.js";
 import { scoreCandidate, CLEAR_THRESHOLD, MARGIN } from "./score.js";
 
+/** Fractional tolerance used by op: "approx" when the assertion doesn't specify one. */
+export const DEFAULT_APPROX_TOLERANCE = 0.02;
+
 function satisfies(a: Assertion, c: ScoredCandidate): boolean {
   switch (a.op) {
     case "eq":
@@ -9,7 +12,7 @@ function satisfies(a: Assertion, c: ScoredCandidate): boolean {
         : (c.valueText ?? "").trim() === (a.valueText ?? "").trim();
     case "approx": {
       if (a.valueNum === null || c.value === null) return false;
-      const tol = a.tolerance ?? 0.02;
+      const tol = a.tolerance ?? DEFAULT_APPROX_TOLERANCE;
       return Math.abs(c.value - a.valueNum) <= Math.abs(a.valueNum) * tol;
     }
     case "range":
