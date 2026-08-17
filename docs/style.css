@@ -84,10 +84,32 @@ code { font-family: var(--mono); font-size: 0.92em; }
 main { display: block; }
 
 section {
-  padding-block: clamp(3.5rem, 8vw, 6rem);
+  padding-block: clamp(2.5rem, 5vw, 3.75rem);
   padding-inline: var(--pad);
 }
 section > * { max-width: var(--measure); }
+
+/* Two columns once there is room: the heading holds a left rail and the
+   content sits beside it. Stacked, those two were costing a heading's height
+   of vertical space per section and leaving the right half of the page empty.
+   The rail also gives every section the same entry point for the eye. */
+@media (min-width: 62rem) {
+  section:not(.hero) {
+    display: grid;
+    grid-template-columns: 15rem minmax(0, 40rem);
+    column-gap: 2.75rem;
+    align-items: start;
+  }
+  section:not(.hero) > * { max-width: none; }
+  .rail { position: sticky; top: 1.5rem; }
+  /* Prose keeps its measure inside the wider content column; code and
+     receipts are free to use all of it. */
+  .col > p, .col > ul, .col > dl, .col > ol { max-width: var(--measure); }
+  .col > .receipt, .col > pre { max-width: none; }
+}
+
+.rail > :last-child { margin-bottom: 0; }
+.col > :last-child { margin-bottom: 0; }
 
 .band {
   background: var(--band);
@@ -97,8 +119,10 @@ section > * { max-width: var(--measure); }
 h1, h2, h3 { font-family: var(--display); font-weight: 400; }
 
 h2 {
-  font-size: clamp(2rem, 5vw, 3rem);
-  line-height: 1;
+  /* Sized for the rail it now sits in, not for a full-width line: at 3rem
+     "Four answers, not two" broke over three lines in a 13rem column. */
+  font-size: clamp(1.9rem, 3.2vw, 2.3rem);
+  line-height: 1.02;
   letter-spacing: 0.005em;
   margin: 0 0 1.2rem;
 }
@@ -125,7 +149,7 @@ p { margin: 0 0 1.05rem; }
   border-left: 2px solid var(--rust);
   padding-left: 1rem;
   color: var(--muted);
-  margin-top: 1.8rem;
+  margin-top: 1.4rem;
 }
 .aside code { color: var(--ink); }
 
@@ -316,7 +340,7 @@ h1 {
 
 /* ---- the receipt ------------------------------------------------------- */
 
-.receipt { margin: 2.6rem 0 0; max-width: var(--wide); }
+.receipt { margin: 2rem 0 0; max-width: var(--wide); }
 .receipt figcaption {
   font: 500 0.72rem/1 var(--mono);
   text-transform: uppercase;
@@ -344,12 +368,12 @@ pre .c { color: var(--muted); }
 .v-drift { color: var(--rust-ink); }
 .v-unver { color: var(--muted); }
 
-.verdicts { margin: 2rem 0 0; display: grid; gap: 0; }
+.verdicts { margin: 1.4rem 0 0; display: grid; gap: 0; }
 .verdicts > div {
   display: grid;
   grid-template-columns: 10.5rem 1fr;
   gap: 1rem;
-  padding: 0.85rem 0;
+  padding: 0.6rem 0;
   border-top: 1px solid var(--rule);
   align-items: baseline;
 }
@@ -372,10 +396,24 @@ dd { margin: 0; }
 
 /* ---- steps ------------------------------------------------------------- */
 
-.steps { margin: 2rem 0 0; padding: 0; list-style: none; counter-reset: step; }
+/* Four steps in two rows rather than four: the sequence is still readable
+   left-to-right, and it halves the section's height. */
+.steps {
+  margin: 1.4rem 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+  display: grid;
+  gap: 0 2.5rem;
+}
+@media (min-width: 46rem) {
+  .steps { grid-template-columns: 1fr 1fr; }
+  .steps li:nth-child(2) { border-top: 1px solid var(--rule); }
+  .steps li:nth-last-child(2) { border-bottom: 1px solid var(--rule); }
+}
 .steps li {
   counter-increment: step;
-  padding: 1.4rem 0;
+  padding: 1rem 0;
   border-top: 1px solid var(--rule);
 }
 .steps li:last-child { border-bottom: 1px solid var(--rule); }
@@ -390,9 +428,20 @@ dd { margin: 0; }
 
 /* ---- limitations ------------------------------------------------------- */
 
-.limits { margin: 1.6rem 0 0; padding: 0; list-style: none; }
+.limits {
+  margin: 1.4rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0 2.5rem;
+}
+@media (min-width: 46rem) {
+  .limits { grid-template-columns: 1fr 1fr; }
+  .limits li:nth-child(2) { border-top: 1px solid var(--rule); }
+  .limits li:nth-last-child(2) { border-bottom: 1px solid var(--rule); }
+}
 .limits li {
-  padding: 0.9rem 0;
+  padding: 0.75rem 0;
   border-top: 1px solid var(--rule);
   color: var(--muted);
 }

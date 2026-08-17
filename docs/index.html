@@ -105,8 +105,11 @@
 </section>
 
 <section class="band">
-  <p class="eyebrow">The third answer</p>
-  <h2>Four answers, not two</h2>
+    <div class="rail">
+    <p class="eyebrow">The third answer</p>
+    <h2>Four answers, not two</h2>
+  </div>
+  <div class="col">
   <p>
     Most monitors diff a page against its last snapshot and tell you
     <em>same</em> or <em>changed</em>. That works until the checker itself goes
@@ -143,11 +146,15 @@
     does it report <code>REMOVED</code>. Healing is not what makes it fast. It
     is what makes a negative believable.
   </p>
+  </div>
 </section>
 
 <section>
-  <p class="eyebrow">Mechanism</p>
-  <h2>How a check runs</h2>
+    <div class="rail">
+    <p class="eyebrow">Mechanism</p>
+    <h2>How a check runs</h2>
+  </div>
+  <div class="col">
   <ol class="steps">
     <li>
       <h3>Reduce the claim, once</h3>
@@ -194,11 +201,15 @@
   now:       "Adult" = 175
   why:       "Adult" now reads 175, expected 170</code></pre>
   </figure>
+  </div>
 </section>
 
 <section class="band" id="start">
-  <p class="eyebrow">Get started</p>
-  <h2>Quickstart</h2>
+    <div class="rail">
+    <p class="eyebrow">Get started</p>
+    <h2>Quickstart</h2>
+  </div>
+  <div class="col">
   <p>
     Node 22 or newer. Only <code>ingest</code> needs a model, and by default it
     uses the <code>claude</code> or <code>codex</code> CLI you are already
@@ -233,11 +244,15 @@ npm run cli -- report</code></pre>
     because our own scraper broke gets switched off within a fortnight, and then
     it protects nobody.
   </p>
+  </div>
 </section>
 
 <section>
-  <p class="eyebrow">Honesty</p>
-  <h2>What it can&rsquo;t do</h2>
+    <div class="rail">
+    <p class="eyebrow">Honesty</p>
+    <h2>What it can&rsquo;t do</h2>
+  </div>
+  <div class="col">
   <p>
     Worth knowing before you rely on it. The full list lives in the
     <a href="https://github.com/claimrot/claimrot#limitations">README</a>.
@@ -262,6 +277,7 @@ npm run cli -- report</code></pre>
       on whether that source was right in the first place.
     </li>
   </ul>
+  </div>
 </section>
 
 </main>
