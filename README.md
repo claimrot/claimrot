@@ -1,4 +1,4 @@
-<img src="docs/assets/logo.png" alt="claimrot" width="300">
+<img src="docs/assets/logo.webp" alt="claimrot" width="300">
 
 # claimrot
 
