@@ -22,6 +22,37 @@ type Db = Database.Database;
 // ingest, since report/study.ts measures claim age against it.
 export const UPDATE_LAST_CHECKED_SQL = `UPDATE claims SET last_checked_at = ? WHERE id = ?`;
 
+// Spec §10: identify ourselves with a contact URL. This is the codebase's
+// one raw fetch() — every page fetch goes through the Bright Data CLI — and
+// it's aimed at the exact endpoint whose whole purpose is establishing that
+// we behave well, so it must not be the one anonymous request an operator
+// sees in their logs.
+export const ROBOTS_UA = "claimrot/0.1 (+https://github.com/claimrot/claimrot)";
+
+/**
+ * Fetches robots.txt for a host, identified (ROBOTS_UA) and time-bounded
+ * (10s — a hung fetch must not stall that host's whole queue). Any failure —
+ * timeout, network error, or a non-ok response including 404 — yields ""
+ * (allowed): a robots-fetch problem must never read as a silent refusal to
+ * check; only an actually-present Disallow does that. `fetchImpl` defaults
+ * to global fetch and exists purely so a test can inject a fake, the same
+ * pattern collect/studio.ts uses for Exec.
+ */
+export async function fetchRobots(
+  host: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<string> {
+  try {
+    const res = await fetchImpl(`https://${host}/robots.txt`, {
+      headers: { "user-agent": ROBOTS_UA },
+      signal: AbortSignal.timeout(10_000),
+    });
+    return res.ok ? await res.text() : "";
+  } catch {
+    return "";
+  }
+}
+
 /**
  * Spec §5 escalation: a claim whose two most recent verdicts are BOTH
  * AMBIGUOUS has read two ways twice running — that's a human's problem, not
@@ -165,12 +196,7 @@ export function buildProgram(): Command {
         try { return new URL(r.sourceUrl).host; } catch { return null; }
       }).filter((h): h is string => h !== null))];
       await Promise.all(hosts.map((host) => queue.run(`https://${host}/robots.txt`, async () => {
-        try {
-          const res = await fetch(`https://${host}/robots.txt`);
-          robotsCache.set(host, res.ok ? await res.text() : "");
-        } catch {
-          robotsCache.set(host, "");
-        }
+        robotsCache.set(host, await fetchRobots(host));
       })));
 
       // One queue.run per row: it wraps the WHOLE checkAssertion call (which may

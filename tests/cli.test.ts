@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildProgram, UPDATE_LAST_CHECKED_SQL, repeatAmbiguousClaims } from "../src/cli.js";
+import { buildProgram, UPDATE_LAST_CHECKED_SQL, repeatAmbiguousClaims, fetchRobots, ROBOTS_UA } from "../src/cli.js";
 import { openDb } from "../src/db/index.js";
 
 describe("cli", () => {
@@ -27,6 +27,35 @@ describe("cli", () => {
     const row = db.prepare(`SELECT checked_at, last_checked_at FROM claims WHERE id='c1'`).get() as any;
     expect(row.checked_at).toBe("2026-07-28");        // untouched
     expect(row.last_checked_at).toBe("2026-08-17");
+  });
+});
+
+describe("fetchRobots", () => {
+  it("identifies itself when fetching robots.txt", async () => {
+    // Spec 10: the one raw fetch we make is on the endpoint whose entire purpose
+    // is establishing that we behave well. An anonymous hit there is the wrong
+    // first impression to give an operator reading their logs.
+    const seen: RequestInit[] = [];
+    const fakeFetch = async (_u: string | URL | Request, init?: RequestInit) => {
+      seen.push(init ?? {});
+      return new Response("", { status: 200 });
+    };
+    await fetchRobots("x.example", fakeFetch as unknown as typeof fetch);
+    const headers = seen[0].headers as Record<string, string>;
+    expect(headers["user-agent"]).toMatch(/claimrot/);
+    expect(ROBOTS_UA).toMatch(/claimrot/);
+  });
+
+  it("treats a non-ok response as allowed (empty robots.txt)", async () => {
+    const fakeFetch = async () => new Response("", { status: 404 });
+    const text = await fetchRobots("x.example", fakeFetch as unknown as typeof fetch);
+    expect(text).toBe("");
+  });
+
+  it("treats a network failure or timeout as allowed, not a silent refusal to check", async () => {
+    const fakeFetch = async () => { throw new Error("timeout"); };
+    const text = await fetchRobots("x.example", fakeFetch as unknown as typeof fetch);
+    expect(text).toBe("");
   });
 });
 
