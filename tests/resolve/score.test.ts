@@ -44,4 +44,12 @@ describe("scoreCandidate", () => {
     const b = scoreCandidate(assertion, cand({ value: 999 }));
     expect(a.score).toBeCloseTo(b.score, 10);
   });
+
+  it("scores a candidate carrying EXTRA qualifying context as a full match", () => {
+    // Asymmetric by design: the page volunteering "to 30 Sep 2026" on top of
+    // "Ocean Cabin" is more informative, not less. Symmetric Jaccard scored
+    // this 0.33 and made the AMBIGUOUS branch unreachable on real pages.
+    const s = scoreCandidate(assertion, cand({ context: "Ocean Cabin to 30 Sep 2026" }));
+    expect(s.signals.contextSimilarity).toBe(1);
+  });
 });

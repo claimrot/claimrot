@@ -13,15 +13,23 @@ const W = {
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
-/** Token-set Jaccard. Cheap, order-insensitive, good enough for short labels. */
-export function similarity(a: string, b: string): number {
-  const A = new Set(norm(a).split(" ").filter(Boolean));
-  const B = new Set(norm(b).split(" ").filter(Boolean));
-  if (A.size === 0 && B.size === 0) return 1;
-  if (A.size === 0 || B.size === 0) return 0;
+/**
+ * Asymmetric coverage: how much of the ANCHOR survives in the candidate.
+ * Deliberately not symmetric — a candidate carrying extra qualifying detail
+ * ("Ocean Cabin to 30 Sep 2026" for anchor "Ocean Cabin") is a better match,
+ * not a worse one, and symmetric Jaccard scored it worse.
+ *
+ * Argument order matters: pass the assertion's anchor FIRST, the candidate's
+ * field SECOND — similarity(a.anchorLabel, c.label). Reversing it inverts
+ * the metric silently.
+ */
+export function similarity(anchor: string, candidate: string): number {
+  const A = new Set(norm(anchor).split(" ").filter(Boolean));
+  const B = new Set(norm(candidate).split(" ").filter(Boolean));
+  if (A.size === 0) return B.size === 0 ? 1 : 0;
   let shared = 0;
   for (const t of A) if (B.has(t)) shared++;
-  return shared / (A.size + B.size - shared);
+  return shared / A.size;
 }
 
 /** Longest common prefix of DOM path segments, as a fraction of the anchor's depth. */
