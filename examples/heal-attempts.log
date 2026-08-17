@@ -1,0 +1,88 @@
+Inserted 4 claims + assertions directly (ingest's normalizer bypassed - no Anthropic key on this machine).
+
+--- checking kaikoura-whale-watch-demo#adult-holds ---
+  verdict: HOLDS	 confidence 1.00	 "Adult" still satisfies the assertion
+
+--- checking kaikoura-whale-watch-demo#child-holds ---
+  verdict: HOLDS	 confidence 1.00	 "Child (3yrs-15yrs)" still satisfies the assertion
+
+--- checking kaikoura-whale-watch-demo#adult-drifted ---
+  verdict: DRIFTED	 confidence 1.00	 "Adult" now reads 175, expected 170
+
+--- checking kaikoura-whale-watch-demo#senior-blind ---
+  [heal] prompt: The scraper returned no candidate for the field "senior_price". It should extract every value on the page together with the label that governs it. Specifically, it must find the value labelled "Senior" within "Ocean Cabin Pricing:". Return each candidate with its value, unit, governing label, and enclosing heading.
+
+=== retry: standalone heal call, direct CLI ===
+Inserted 4 claims + assertions directly (ingest's normalizer bypassed - no Anthropic key on this machine).
+
+--- checking kaikoura-whale-watch-demo#senior-blind ---
+  [heal] prompt: The scraper returned no candidate for the field "senior_price". It should extract every value on the page together with the label that governs it. Specifically, it must find the value labelled "Senior" within "Ocean Cabin Pricing:". Return each candidate with its value, unit, governing label, and enclosing heading.
+  verdict: UNVERIFIABLE	 confidence 0.00	 heal failed: {"collector_id":"c_msx2l16bsipcs0zz","status":"heal_trigger_failed","completed_steps":[],"prompt":"The scraper returned no candidate for the field \"senior_price\". It should extract every value on the page together with the label that governs it. Specifically, it must find the value labelled \"Senior\" within \"Ocean Cabin Pricing:\". Return each candidate with its value, unit, governing label, and enclosing heading.","view_url":"https://brightdata.com/cp/scrapers/c_msx2l16bsipcs0zz","next_step":"bdata scraper run c_msx2l16bsipcs0zz https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/","error":"Another refactor job is still in progress"}
+
+
+Done. DB written to examples/demo.db
+
+=== retry 2 (after collector confirmed unchanged via a plain run) ===
+Inserted 4 claims + assertions directly (ingest's normalizer bypassed - no Anthropic key on this machine).
+
+--- checking kaikoura-whale-watch-demo#senior-blind ---
+  [heal] prompt: The scraper returned no candidate for the field "senior_price". It should extract every value on the page together with the label that governs it. Specifically, it must find the value labelled "Senior" within "Ocean Cabin Pricing:". Return each candidate with its value, unit, governing label, and enclosing heading.
+  verdict: UNVERIFIABLE	 confidence 0.00	 heal failed: {"collector_id":"c_msx2l16bsipcs0zz","status":"heal_trigger_failed","completed_steps":[],"prompt":"The scraper returned no candidate for the field \"senior_price\". It should extract every value on the page together with the label that governs it. Specifically, it must find the value labelled \"Senior\" within \"Ocean Cabin Pricing:\". Return each candidate with its value, unit, governing label, and enclosing heading.","view_url":"https://brightdata.com/cp/scrapers/c_msx2l16bsipcs0zz","next_step":"bdata scraper run c_msx2l16bsipcs0zz https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/","error":"Another refactor job is still in progress"}
+
+
+Done. DB written to examples/demo.db
+
+=== direct bdata heal retry ===
+Triggering self-healing...
+Failed to start self-healing for collector c_msx2l16bsipcs0zz: Error: Another refactor job is still in progress
+  Status: 409
+{
+  "collector_id": "c_msx2l16bsipcs0zz",
+  "status": "heal_trigger_failed",
+  "completed_steps": [],
+  "prompt": "The scraper returned no candidate for the field senior_price. It should extract every value on the page together with the label that governs it. Specifically, it must find the value labelled Senior within Ocean Cabin Pricing:.",
+  "view_url": "https://brightdata.com/cp/scrapers/c_msx2l16bsipcs0zz",
+  "next_step": "bdata scraper run c_msx2l16bsipcs0zz https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/",
+  "error": "Another refactor job is still in progress"
+}
+Note: the heal did not complete, but scraper c_msx2l16bsipcs0zz is unchanged and still works as it did before.
+Open https://brightdata.com/cp/scrapers/c_msx2l16bsipcs0zz to inspect it, or re-run `bdata scraper heal` with a sharper prompt.
+
+=== 5x retry loop, 20s apart ===
+=== attempt 1 ===
+Triggering self-healing...
+Failed to start self-healing for collector c_msx2l16bsipcs0zz: Error: Another refactor job is still in progress
+  Status: 409
+{"collector_id":"c_msx2l16bsipcs0zz","status":"heal_trigger_failed","completed_steps":[],"prompt":"The scraper returned no candidate for the field senior_price. It should extract every value on the page together with the label that governs it. Specifically, it must find the value labelled Senior within Ocean Cabin Pricing:.","view_url":"https://brightdata.com/cp/scrapers/c_msx2l16bsipcs0zz","next_step":"bdata scraper run c_msx2l16bsipcs0zz https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/","error":"Another refactor job is still in progress"}
+Note: the heal did not complete, but scraper c_msx2l16bsipcs0zz is unchanged and still works as it did before.
+Open https://brightdata.com/cp/scrapers/c_msx2l16bsipcs0zz to inspect it, or re-run `bdata scraper heal` with a sharper prompt.
+=== attempt 2 ===
+Triggering self-healing...
+Failed to start self-healing for collector c_msx2l16bsipcs0zz: Error: Another refactor job is still in progress
+  Status: 409
+{"collector_id":"c_msx2l16bsipcs0zz","status":"heal_trigger_failed","completed_steps":[],"prompt":"The scraper returned no candidate for the field senior_price. It should extract every value on the page together with the label that governs it. Specifically, it must find the value labelled Senior within Ocean Cabin Pricing:.","view_url":"https://brightdata.com/cp/scrapers/c_msx2l16bsipcs0zz","next_step":"bdata scraper run c_msx2l16bsipcs0zz https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/","error":"Another refactor job is still in progress"}
+Note: the heal did not complete, but scraper c_msx2l16bsipcs0zz is unchanged and still works as it did before.
+Open https://brightdata.com/cp/scrapers/c_msx2l16bsipcs0zz to inspect it, or re-run `bdata scraper heal` with a sharper prompt.
+=== attempt 3 ===
+Triggering self-healing...
+Failed to start self-healing for collector c_msx2l16bsipcs0zz: Error: Another refactor job is still in progress
+  Status: 409
+{"collector_id":"c_msx2l16bsipcs0zz","status":"heal_trigger_failed","completed_steps":[],"prompt":"The scraper returned no candidate for the field senior_price. It should extract every value on the page together with the label that governs it. Specifically, it must find the value labelled Senior within Ocean Cabin Pricing:.","view_url":"https://brightdata.com/cp/scrapers/c_msx2l16bsipcs0zz","next_step":"bdata scraper run c_msx2l16bsipcs0zz https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/","error":"Another refactor job is still in progress"}
+Note: the heal did not complete, but scraper c_msx2l16bsipcs0zz is unchanged and still works as it did before.
+Open https://brightdata.com/cp/scrapers/c_msx2l16bsipcs0zz to inspect it, or re-run `bdata scraper heal` with a sharper prompt.
+=== attempt 4 ===
+Triggering self-healing...
+Failed to start self-healing for collector c_msx2l16bsipcs0zz: Error: Another refactor job is still in progress
+  Status: 409
+{"collector_id":"c_msx2l16bsipcs0zz","status":"heal_trigger_failed","completed_steps":[],"prompt":"The scraper returned no candidate for the field senior_price. It should extract every value on the page together with the label that governs it. Specifically, it must find the value labelled Senior within Ocean Cabin Pricing:.","view_url":"https://brightdata.com/cp/scrapers/c_msx2l16bsipcs0zz","next_step":"bdata scraper run c_msx2l16bsipcs0zz https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/","error":"Another refactor job is still in progress"}
+Note: the heal did not complete, but scraper c_msx2l16bsipcs0zz is unchanged and still works as it did before.
+Open https://brightdata.com/cp/scrapers/c_msx2l16bsipcs0zz to inspect it, or re-run `bdata scraper heal` with a sharper prompt.
+=== attempt 5 ===
+Triggering self-healing...
+Failed to start self-healing for collector c_msx2l16bsipcs0zz: Error: Another refactor job is still in progress
+  Status: 409
+{"collector_id":"c_msx2l16bsipcs0zz","status":"heal_trigger_failed","completed_steps":[],"prompt":"The scraper returned no candidate for the field senior_price. It should extract every value on the page together with the label that governs it. Specifically, it must find the value labelled Senior within Ocean Cabin Pricing:.","view_url":"https://brightdata.com/cp/scrapers/c_msx2l16bsipcs0zz","next_step":"bdata scraper run c_msx2l16bsipcs0zz https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/","error":"Another refactor job is still in progress"}
+Note: the heal did not complete, but scraper c_msx2l16bsipcs0zz is unchanged and still works as it did before.
+Open https://brightdata.com/cp/scrapers/c_msx2l16bsipcs0zz to inspect it, or re-run `bdata scraper heal` with a sharper prompt.
+
+[exited with code 0]

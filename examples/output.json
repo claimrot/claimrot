@@ -1,0 +1,178 @@
+[
+  {
+    "claimId": "kaikoura-whale-watch-demo#adult-holds",
+    "claimText": "Adult admission on the Whale Watch Kaikoura Ocean Cabin tour is NZ$175.",
+    "sourceUrl": "https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/",
+    "sourceCheckedAt": "2026-08-08T00:00:00Z",
+    "verdict": "HOLDS",
+    "confidence": 1,
+    "ranAt": "2026-08-17T11:01:06.116Z",
+    "evidence": {
+      "verdict": "HOLDS",
+      "confidence": 1,
+      "chosen": {
+        "value": 175,
+        "valueText": null,
+        "unit": "NZD",
+        "label": "Adult",
+        "context": "Ocean Cabin Pricing:",
+        "path": "",
+        "score": 1,
+        "signals": {
+          "labelSimilarity": 1,
+          "contextSimilarity": 1,
+          "corroboration": null,
+          "unitMatch": 1,
+          "pathStability": null
+        }
+      },
+      "contenders": [
+        {
+          "value": 175,
+          "valueText": null,
+          "unit": "NZD",
+          "label": "Adult",
+          "context": "Ocean Cabin Pricing:",
+          "path": "",
+          "score": 1,
+          "signals": {
+            "labelSimilarity": 1,
+            "contextSimilarity": 1,
+            "corroboration": null,
+            "unitMatch": 1,
+            "pathStability": null
+          }
+        }
+      ],
+      "reason": "\"Adult\" still satisfies the assertion"
+    }
+  },
+  {
+    "claimId": "kaikoura-whale-watch-demo#child-holds",
+    "claimText": "Child (3-15 years) admission on the Ocean Cabin tour is NZ$60.",
+    "sourceUrl": "https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/",
+    "sourceCheckedAt": "2026-08-08T00:00:00Z",
+    "verdict": "HOLDS",
+    "confidence": 1,
+    "ranAt": "2026-08-17T11:01:11.545Z",
+    "evidence": {
+      "verdict": "HOLDS",
+      "confidence": 1,
+      "chosen": {
+        "value": 60,
+        "valueText": null,
+        "unit": "NZD",
+        "label": "Child (3yrs-15yrs)",
+        "context": "Ocean Cabin Pricing:",
+        "path": "",
+        "score": 1,
+        "signals": {
+          "labelSimilarity": 1,
+          "contextSimilarity": 1,
+          "corroboration": null,
+          "unitMatch": 1,
+          "pathStability": null
+        }
+      },
+      "contenders": [
+        {
+          "value": 60,
+          "valueText": null,
+          "unit": "NZD",
+          "label": "Child (3yrs-15yrs)",
+          "context": "Ocean Cabin Pricing:",
+          "path": "",
+          "score": 1,
+          "signals": {
+            "labelSimilarity": 1,
+            "contextSimilarity": 1,
+            "corroboration": null,
+            "unitMatch": 1,
+            "pathStability": null
+          }
+        }
+      ],
+      "reason": "\"Child (3yrs-15yrs)\" still satisfies the assertion"
+    }
+  },
+  {
+    "claimId": "kaikoura-whale-watch-demo#adult-drifted",
+    "claimText": "[deliberately stale, to exercise DRIFTED] Adult admission on the Ocean Cabin tour is NZ$170.",
+    "sourceUrl": "https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/",
+    "sourceCheckedAt": "2026-08-08T00:00:00Z",
+    "verdict": "DRIFTED",
+    "confidence": 1,
+    "ranAt": "2026-08-17T11:01:17.005Z",
+    "evidence": {
+      "verdict": "DRIFTED",
+      "confidence": 1,
+      "chosen": {
+        "value": 175,
+        "valueText": null,
+        "unit": "NZD",
+        "label": "Adult",
+        "context": "Ocean Cabin Pricing:",
+        "path": "",
+        "score": 1,
+        "signals": {
+          "labelSimilarity": 1,
+          "contextSimilarity": 1,
+          "corroboration": null,
+          "unitMatch": 1,
+          "pathStability": null
+        }
+      },
+      "contenders": [
+        {
+          "value": 175,
+          "valueText": null,
+          "unit": "NZD",
+          "label": "Adult",
+          "context": "Ocean Cabin Pricing:",
+          "path": "",
+          "score": 1,
+          "signals": {
+            "labelSimilarity": 1,
+            "contextSimilarity": 1,
+            "corroboration": null,
+            "unitMatch": 1,
+            "pathStability": null
+          }
+        }
+      ],
+      "reason": "\"Adult\" now reads 175, expected 170"
+    }
+  },
+  {
+    "claimId": "kaikoura-whale-watch-demo#senior-blind",
+    "claimText": "[deliberately unsupported, to exercise blindness/heal/REMOVED] Senior admission on the Ocean Cabin tour is NZ$140.",
+    "sourceUrl": "https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/",
+    "sourceCheckedAt": "2026-08-08T00:00:00Z",
+    "verdict": "UNVERIFIABLE",
+    "confidence": 0,
+    "ranAt": "2026-08-17T11:11:45.895Z",
+    "evidence": {
+      "verdict": "UNVERIFIABLE",
+      "confidence": 0,
+      "chosen": null,
+      "contenders": [],
+      "reason": "heal failed: {\"collector_id\":\"c_msx2l16bsipcs0zz\",\"status\":\"heal_trigger_failed\",\"completed_steps\":[],\"prompt\":\"The scraper returned no candidate for the field \\\"senior_price\\\". It should extract every value on the page together with the label that governs it. Specifically, it must find the value labelled \\\"Senior\\\" within \\\"Ocean Cabin Pricing:\\\". Return each candidate with its value, unit, governing label, and enclosing heading.\",\"view_url\":\"https://brightdata.com/cp/scrapers/c_msx2l16bsipcs0zz\",\"next_step\":\"bdata scraper run c_msx2l16bsipcs0zz https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/\",\"error\":\"Another refactor job is still in progress\"}\n"
+    }
+  },
+  {
+    "claimId": "kaikoura-whale-watch-demo#senior-blind",
+    "claimText": "[deliberately unsupported, to exercise blindness/heal/REMOVED] Senior admission on the Ocean Cabin tour is NZ$140.",
+    "sourceUrl": "https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/",
+    "sourceCheckedAt": "2026-08-08T00:00:00Z",
+    "verdict": "UNVERIFIABLE",
+    "confidence": 0,
+    "ranAt": "2026-08-17T11:12:17.775Z",
+    "evidence": {
+      "verdict": "UNVERIFIABLE",
+      "confidence": 0,
+      "chosen": null,
+      "contenders": [],
+      "reason": "heal failed: {\"collector_id\":\"c_msx2l16bsipcs0zz\",\"status\":\"heal_trigger_failed\",\"completed_steps\":[],\"prompt\":\"The scraper returned no candidate for the field \\\"senior_price\\\". It should extract every value on the page together with the label that governs it. Specifically, it must find the value labelled \\\"Senior\\\" within \\\"Ocean Cabin Pricing:\\\". Return each candidate with its value, unit, governing label, and enclosing heading.\",\"view_url\":\"https://brightdata.com/cp/scrapers/c_msx2l16bsipcs0zz\",\"next_step\":\"bdata scraper run c_msx2l16bsipcs0zz https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/\",\"error\":\"Another refactor job is still in progress\"}\n"
+    }
+  }
+]
