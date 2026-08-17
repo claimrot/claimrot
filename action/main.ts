@@ -1,13 +1,11 @@
 import { appendFileSync, readFileSync } from "node:fs";
-import type { Verdict } from "../src/model/types.js";
+import type { Verdict, VerdictRecord } from "../src/model/types.js";
 
-/** A single row from the verdicts JSON file produced by `claimrot report`. */
-export interface VerdictRecord {
-  verdict: Verdict;
-  confidence: number;
-  claim: string;
-  url: string;
-}
+// Re-exported for anything importing the shape from this module, but the
+// canonical definition lives in src/model/types.ts so the CLI's `report
+// --json` producer and this consumer share exactly one type and cannot drift
+// apart (see the doc comment on VerdictRecord there).
+export type { VerdictRecord };
 
 function isFailingFinding(
   v: { verdict: Verdict; confidence: number }, floor: number,

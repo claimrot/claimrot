@@ -63,3 +63,18 @@ export interface Resolution {
   contenders: ScoredCandidate[];
   reason: string;
 }
+
+/**
+ * A single row of the verdicts JSON file that `claimrot report --json`
+ * produces and `action/main.ts` consumes. Defined once, here, and imported by
+ * both sides so the producer and the consumer cannot drift apart the way
+ * `report`'s human output and the action's expected `{claim, url, ...}` shape
+ * once did (examples/output.json used `{claimId, claimText, sourceUrl, ...}`
+ * and fed the action `undefined (undefined)` receipts).
+ */
+export interface VerdictRecord {
+  verdict: Verdict;
+  confidence: number;
+  claim: string;
+  url: string;
+}

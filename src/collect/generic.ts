@@ -1,4 +1,5 @@
 import type { Candidate } from "../model/types.js";
+import { parseRawValue } from "./parse.js";
 
 const BLOCK = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
 
@@ -29,8 +30,10 @@ export function extractJsonLdCandidates(html: string, _field: string): Candidate
       const offers = node?.offers;
       for (const offer of Array.isArray(offers) ? offers : offers ? [offers] : []) {
         const raw = offer.price ?? offer.lowPrice;
-        const value = raw === undefined ? null : Number(raw);
-        if (value !== null && Number.isFinite(value)) {
+        // Blank/whitespace ("") must not become 0, and a currency-formatted
+        // string ("NZ$175.00") must still parse — see src/collect/parse.ts.
+        const { value } = parseRawValue(raw);
+        if (value !== null) {
           out.push({
             value,
             valueText: null,

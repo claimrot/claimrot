@@ -242,6 +242,17 @@ verdicts  (id, check_id, claim_id, verdict, confidence, evidence_json)
 Fetches are deduplicated **per distinct URL**, not per claim — in the reference
 corpus that is 942 URLs carrying 2,572 claims, a mean of 2.7 claims per fetch.
 
+**Not yet implemented.** `src/cli.ts`'s `check` command iterates one row per
+*assertion* (via a JOIN over `assertions`/`claims`) and runs its own collector
+call per row — there is no per-URL grouping or cache in that loop. So today's
+actual fetch count is close to the assertion count, not the distinct-URL
+count: roughly **2.7× the collector calls, requests and Bright Data spend**
+this section's own numbers imply. This is the top open follow-up (see
+README's Limitations). It was deliberately not fixed in the final pre-submission
+pass: restructuring the per-row check loop this close to the deadline, with
+the concurrency and per-host politeness code already wired around it
+(`src/net/politeness.ts`'s `HostQueue`), was judged too invasive to risk.
+
 ## 7. Collectors and the tail
 
 Collectors are bound to **host families** by URL pattern, not to individual claims:

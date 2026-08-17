@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { Candidate } from "../model/types.js";
 import type { CollectRunResult, CollectorRecord, Exec, HealResult } from "./types.js";
+import { parseRawValue } from "./parse.js";
 
 const pexec = promisify(execFile);
 
@@ -34,10 +35,10 @@ const pick = (o: Record<string, unknown>, keys: readonly string[]): unknown =>
 
 function toCandidate(c: Record<string, unknown>): Candidate {
   const raw = pick(c, SYNONYM.value);
-  const num = typeof raw === "number" ? raw : Number(raw);
+  const { value, valueText } = parseRawValue(raw);
   return {
-    value: Number.isFinite(num) ? num : null,
-    valueText: typeof raw === "string" && !Number.isFinite(num) ? raw : null,
+    value,
+    valueText,
     unit: (pick(c, SYNONYM.unit) as string) ?? null,
     label: (pick(c, SYNONYM.label) as string) ?? "",
     context: (pick(c, SYNONYM.context) as string) ?? "",

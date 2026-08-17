@@ -11,7 +11,7 @@ import { checkAssertion } from "./engine/check.js";
 import type { EngineDeps } from "./engine/check.js";
 import { nextCheckAt } from "./engine/schedule.js";
 import { HostQueue, isAllowed } from "./net/politeness.js";
-import { renderReceipts } from "./report/receipts.js";
+import { renderReceipts, renderVerdictsJson } from "./report/receipts.js";
 import { halfLife } from "./report/study.js";
 import type { Candidate, Claim, Verdict } from "./model/types.js";
 import type { CollectorRecord, CollectRunResult } from "./collect/types.js";
@@ -23,11 +23,12 @@ type Db = Database.Database;
 // ingest, since report/study.ts measures claim age against it.
 export const UPDATE_LAST_CHECKED_SQL = `UPDATE claims SET last_checked_at = ? WHERE id = ?`;
 
-// Spec §10: identify ourselves with a contact URL. This is the codebase's
-// one raw fetch() — every page fetch goes through the Bright Data CLI — and
-// it's aimed at the exact endpoint whose whole purpose is establishing that
-// we behave well, so it must not be the one anonymous request an operator
-// sees in their logs.
+// Spec §10: identify ourselves with a contact URL. This is aimed at the
+// exact endpoint whose whole purpose is establishing that we behave well
+// (robots.txt), so it must not be the one anonymous request an operator sees
+// in their logs. It is no longer the codebase's only raw fetch() — runGeneric
+// below (the unmatched-tail collector, spec §7) also fetches pages directly
+// rather than going through the Bright Data CLI, and reuses this same UA.
 export const ROBOTS_UA = "claimrot/0.1 (+https://github.com/claimrot/claimrot)";
 
 /**
@@ -291,8 +292,18 @@ export function buildProgram(): Command {
     });
 
   program.command("report").option("--verdict <v>", "filter by verdict", "DRIFTED")
+    .option("--json", "emit every claim's latest verdict as JSON (for the GitHub Action), ignoring --verdict")
     .action((opts) => {
       const db = openDb(program.opts().db);
+
+      if (opts.json) {
+        // Feeds action/main.ts (docs/design.md §8.2) — the whole checked set,
+        // not filtered by --verdict, since the action needs HOLDS/UNVERIFIABLE
+        // counts too, not just the failing verdicts.
+        console.log(JSON.stringify(renderVerdictsJson(db), null, 2));
+        return;
+      }
+
       console.log(renderReceipts(db, opts.verdict));
 
       const repeats = repeatAmbiguousClaims(db);

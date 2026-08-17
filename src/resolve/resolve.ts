@@ -26,13 +26,27 @@ const sameValue = (x: ScoredCandidate, y: ScoredCandidate) =>
   x.value === y.value && (x.valueText ?? "") === (y.valueText ?? "");
 
 /**
+ * True when the assertion expects a NUMBER (a.valueNum !== null, on eq/approx/
+ * range) but the candidate's value could not be parsed to one (c.value ===
+ * null). That is not a mismatch — it is our own blindness to the value, and
+ * `satisfies` would otherwise convict it (null !== 175) and produce a false
+ * `DRIFTED`. Such a candidate is dropped before resolution rather than
+ * scored against the assertion: if that empties `cleared`, resolveCandidates
+ * correctly returns null and the caller heals instead of reporting drift.
+ */
+function isUnparseableNumeric(a: Assertion, c: ScoredCandidate): boolean {
+  return (a.op === "eq" || a.op === "approx" || a.op === "range")
+    && a.valueNum !== null && c.value === null;
+}
+
+/**
  * Returns null when no candidate clears the threshold. Null is NOT a negative
  * finding — it means we could not see the value, and the caller must heal
  * before drawing any conclusion (spec §4.5).
  */
 export function resolveCandidates(a: Assertion, cands: Candidate[]): Resolution | null {
   const scored = cands.map((c) => scoreCandidate(a, c)).sort((x, y) => y.score - x.score);
-  const cleared = scored.filter((c) => c.score >= CLEAR_THRESHOLD);
+  const cleared = scored.filter((c) => c.score >= CLEAR_THRESHOLD && !isUnparseableNumeric(a, c));
   if (cleared.length === 0) return null;
 
   const [top] = cleared;

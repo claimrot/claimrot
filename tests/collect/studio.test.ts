@@ -106,6 +106,48 @@ describe("healCollector", () => {
   });
 });
 
+describe("toCandidate value parsing (via runCollector)", () => {
+  const payloadWith = (rawValue: unknown) => JSON.stringify([{
+    fields: {
+      adult_price: [{ price_value: rawValue, currency: "NZD", label: "Adult", heading: "Ocean Cabin" }],
+    },
+  }]);
+
+  it("treats a blank extracted value as unreadable, not as zero", async () => {
+    // Number("") === 0. A collector's way of saying "I couldn't find it" became
+    // a confident DRIFTED reading "Adult now reads 0, expected 175".
+    const r = await runCollector("c_abc", "u", { exec: fakeExec(payloadWith("")) });
+    expect(r.status).toBe("ok");
+    if (r.status !== "ok") return;
+    const [cand] = r.record.fields.adult_price;
+    expect(cand.value).toBeNull();
+    expect(cand.value).not.toBe(0);
+  });
+
+  it("treats a whitespace-only extracted value as unreadable, not as zero", async () => {
+    const r = await runCollector("c_abc", "u", { exec: fakeExec(payloadWith("   ")) });
+    expect(r.status).toBe("ok");
+    if (r.status !== "ok") return;
+    expect(r.record.fields.adult_price[0].value).toBeNull();
+  });
+
+  it("parses a currency-formatted price rather than calling it unreadable", async () => {
+    // "NZ$175.00" is the SAME price. Coercing it to null made an unchanged
+    // claim report as drifted.
+    const r = await runCollector("c_abc", "u", { exec: fakeExec(payloadWith("NZ$175.00")) });
+    expect(r.status).toBe("ok");
+    if (r.status !== "ok") return;
+    expect(r.record.fields.adult_price[0].value).toBe(175);
+  });
+
+  it("parses a thousands-separated, currency-prefixed price", async () => {
+    const r = await runCollector("c_abc", "u", { exec: fakeExec(payloadWith("$1,175")) });
+    expect(r.status).toBe("ok");
+    if (r.status !== "ok") return;
+    expect(r.record.fields.adult_price[0].value).toBe(1175);
+  });
+});
+
 describe("flagBlobCandidates", () => {
   it("drops a candidate whose label matches several distinct anchors", () => {
     const anchors = ["Adult", "Child", "Senior"];

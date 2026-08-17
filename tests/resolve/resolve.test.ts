@@ -92,6 +92,25 @@ describe("resolveCandidates", () => {
     expect(r.confidence).toBeLessThan(r.chosen!.score);
   });
 
+  it("never reports DRIFTED when the candidate's value could not be parsed", () => {
+    // The founding rule, at the layer where it actually broke: a collector
+    // that couldn't read the value (value: null, e.g. from a blank
+    // price_value or an unparseable currency string) must never be convicted
+    // as "changed" just because null !== the expected number. Label/context
+    // match the anchor well enough to clear on their own.
+    const r = resolveCandidates(base, [c({ value: null })]);
+    expect(r).toBeNull();          // dropped, not resolved — caller must heal
+  });
+
+  it("drops only the unparseable candidate, still resolving on a readable one", () => {
+    const r = resolveCandidates(base, [
+      c({ value: null, context: "Ocean Cabin (unreadable)" }),
+      c({ value: 175 }),
+    ])!;
+    expect(r.verdict).toBe("HOLDS");
+    expect(r.chosen!.value).toBe(175);
+  });
+
   it("top wins at full confidence when all cleared candidates agree", () => {
     // Table row: ≥2 cleared, all agree → compare top → HOLDS/DRIFTED, full confidence.
     const r = resolveCandidates(base, [

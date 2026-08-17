@@ -191,6 +191,20 @@ Files:
 
 ## Limitations
 
+- **Top follow-up: per-URL fetch dedup is specified but not implemented.**
+  Design doc §6 states fetches are deduplicated per distinct URL — 942 URLs
+  carrying 2,572 claims in the reference corpus, a mean of 2.7 claims per
+  fetch. `check` (`src/cli.ts`) actually iterates one row per *assertion* and
+  issues its own collector call for each, with no per-URL grouping or cache
+  in that loop. So today's real fetch count tracks the assertion count, not
+  the distinct-URL count — roughly **2.7× the collector calls, HTTP requests,
+  and Bright Data spend** the corpus numbers above imply. This was left
+  unfixed deliberately: restructuring the per-row check loop this close to
+  the deadline, with per-host concurrency and politeness pacing
+  (`src/net/politeness.ts`'s `HostQueue`) already built around today's
+  one-row-at-a-time shape, risked introducing a concurrency bug for a
+  performance win, and that trade wasn't worth making under deadline
+  pressure. See `docs/design.md` §6.
 - **The half-life study awaits a full corpus run.** Design doc §9 specifies a
   measured half-life across the reference corpus's 2,572 claims; producing
   that number requires running `ingest` over the full corpus, which requires
