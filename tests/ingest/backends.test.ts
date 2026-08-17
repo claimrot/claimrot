@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { extractJson, selectBackend, BACKENDS } from "../../src/ingest/backends.js";
+import {
+  extractJson, selectBackend, BACKENDS, runCapture,
+  CLAUDE_OVERRIDING_ENV, CODEX_OVERRIDING_ENV,
+} from "../../src/ingest/backends.js";
 import { NormalizedSchema, ASSERTIONS_JSON_SCHEMA } from "../../src/ingest/normalize.js";
 
 const assertion = {
@@ -78,6 +81,49 @@ describe("extractJson", () => {
   });
 });
 
+describe("a CLI backend does not inherit a metered credential", () => {
+  // Choosing the CLI is only a billing decision if the CLI actually runs on the
+  // login. Claude Code states that ANTHROPIC_API_KEY "takes precedence over
+  // your claude.ai login" — so an exported key would silently put the charge
+  // back on the API despite the backend we picked.
+  const show = (name: string) => ["-p", `process.env.${name} ?? "ABSENT"`];
+
+  it("strips the vars that would override a claude.ai login", async () => {
+    process.env.ANTHROPIC_API_KEY = "sk-ant-should-not-reach-the-child";
+    try {
+      const seen = await runCapture(process.execPath, show("ANTHROPIC_API_KEY"), CLAUDE_OVERRIDING_ENV);
+      expect(seen.trim()).toBe("ABSENT");
+    } finally {
+      delete process.env.ANTHROPIC_API_KEY;
+    }
+  });
+
+  it("strips the var that would override a codex login", async () => {
+    process.env.OPENAI_API_KEY = "sk-should-not-reach-the-child";
+    try {
+      const seen = await runCapture(process.execPath, show("OPENAI_API_KEY"), CODEX_OVERRIDING_ENV);
+      expect(seen.trim()).toBe("ABSENT");
+    } finally {
+      delete process.env.OPENAI_API_KEY;
+    }
+  });
+
+  it("passes the rest of the environment through untouched", async () => {
+    process.env.CLAIMROT_TEST_MARKER = "kept";
+    try {
+      const seen = await runCapture(process.execPath, show("CLAIMROT_TEST_MARKER"), CLAUDE_OVERRIDING_ENV);
+      expect(seen.trim()).toBe("kept");
+    } finally {
+      delete process.env.CLAIMROT_TEST_MARKER;
+    }
+  });
+
+  it("surfaces a failing CLI's stderr rather than a bare exit code", async () => {
+    await expect(runCapture(process.execPath, ["-e", 'console.error("boom"); process.exit(3)']))
+      .rejects.toThrow(/exited 3: boom/);
+  });
+});
+
 describe("selectBackend", () => {
   const none = () => false;
   const all = () => true;
@@ -95,13 +141,26 @@ describe("selectBackend", () => {
     expect(() => selectBackend("gpt", {}, all)).toThrow(/api, claude-cli, codex-cli/);
   });
 
-  it("prefers the API when a key is present", () => {
-    expect(selectBackend(undefined, { ANTHROPIC_API_KEY: "sk-x" }, all).name).toBe("api");
+  it("prefers a logged-in CLI over a key that merely happens to be exported", () => {
+    // Billing, not capability: a CLI spends a subscription already paid for,
+    // an API key meters per token. Being charged because ANTHROPIC_API_KEY was
+    // sitting in the shell is not a choice the operator made.
+    expect(selectBackend(undefined, { ANTHROPIC_API_KEY: "sk-x" }, all).name).toBe("claude-cli");
   });
 
-  it("falls back to claude-cli with no key, then codex-cli", () => {
-    expect(selectBackend(undefined, {}, (b) => b === "claude").name).toBe("claude-cli");
-    expect(selectBackend(undefined, {}, (b) => b === "codex").name).toBe("codex-cli");
+  it("orders the automatic search claude-cli, then codex-cli, then api", () => {
+    const key = { ANTHROPIC_API_KEY: "sk-x" };
+    expect(selectBackend(undefined, key, all).name).toBe("claude-cli");
+    expect(selectBackend(undefined, key, (b) => b === "codex").name).toBe("codex-cli");
+    expect(selectBackend(undefined, key, none).name).toBe("api");
+  });
+
+  it("still reaches the API when it is the only thing available", () => {
+    expect(selectBackend(undefined, { ANTHROPIC_API_KEY: "sk-x" }, none).name).toBe("api");
+  });
+
+  it("--backend api is how you opt into being billed", () => {
+    expect(selectBackend("api", { ANTHROPIC_API_KEY: "sk-x" }, all).name).toBe("api");
   });
 
   it("explains itself when nothing is available, and says check/report are unaffected", () => {

@@ -24,9 +24,11 @@ const promptFor = (text: string) => `${SYSTEM}\n\nClaim:\n${text}`;
  * offers no way to detach it. stderr is collected only to make a failure
  * legible — these are agents, and "exit 1" alone is not a diagnosis.
  */
-function runCapture(bin: string, args: string[]): Promise<string> {
+export function runCapture(bin: string, args: string[], stripEnv: string[] = []): Promise<string> {
   return new Promise((resolve, reject) => {
-    const child = spawn(bin, args, { stdio: ["ignore", "pipe", "pipe"] });
+    const env = { ...process.env };
+    for (const key of stripEnv) delete env[key];
+    const child = spawn(bin, args, { stdio: ["ignore", "pipe", "pipe"], env });
     let out = "";
     let err = "";
     let size = 0;
@@ -99,6 +101,17 @@ export const apiParse: ParseFn = async (text) => {
 };
 
 /**
+ * Auth variables that would override a CLI's logged-in session. They are
+ * stripped from the child environment, because a backend chosen specifically
+ * to spend a subscription must not silently fall through to a metered key that
+ * happened to be exported — Claude Code says so itself: "ANTHROPIC_API_KEY or
+ * another auth source is set and takes precedence over your claude.ai login".
+ * Without this, defaulting to the CLI would not actually change who pays.
+ */
+export const CLAUDE_OVERRIDING_ENV = ["ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"];
+export const CODEX_OVERRIDING_ENV = ["OPENAI_API_KEY"];
+
+/**
  * Claude Code in print mode. Authenticates with the operator's existing login
  * rather than an API key, which is the whole point: ingest is a local, one-off
  * operation, so it can use a credential CI never sees.
@@ -110,7 +123,7 @@ export const claudeCliParse: ParseFn = async (text) => {
     "--model", MODEL,
     // This is a text-to-JSON call. It has no business touching the filesystem.
     "--disallowed-tools", "Bash", "Edit", "Write", "Read",
-  ]);
+  ], CLAUDE_OVERRIDING_ENV);
   return extractJson(stdout);
 };
 
@@ -134,7 +147,7 @@ export const codexCliParse: ParseFn = async (text) => {
       "-o", outPath,
       "--sandbox", "read-only",
       "--skip-git-repo-check",
-    ]);
+    ], CODEX_OVERRIDING_ENV);
     return extractJson(await readFile(outPath, "utf8"));
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -149,10 +162,17 @@ export const BACKENDS: Record<BackendName, ParseFn> = {
 
 /**
  * Picks a backend, preferring an explicit choice and otherwise whatever this
- * machine can actually authenticate. The API needs a key; the CLIs need a
- * logged-in operator — so the default is "what is already set up here",
- * because an ingest that stops to ask for a credential nobody has is worse
- * than one that uses the credential they do.
+ * machine can authenticate — CLIs first, API last.
+ *
+ * That order is about billing, not capability. A logged-in CLI draws on a
+ * subscription the operator is already paying for; an API key meters per
+ * token. Defaulting to the metered one merely because the variable happens to
+ * be exported charges people for a choice they never made — and
+ * `ANTHROPIC_API_KEY` is exported in a lot of shells for unrelated reasons.
+ * `--backend api` is how you opt into being billed.
+ *
+ * The API is still the only backend CI can use, since the CLIs authenticate as
+ * a logged-in human; CI sets --backend explicitly.
  */
 export function selectBackend(
   explicit: string | undefined,
@@ -169,11 +189,12 @@ export function selectBackend(
     return { name, parse: BACKENDS[name] };
   }
 
-  if (env.ANTHROPIC_API_KEY) return { name: "api", parse: apiParse };
   if (has("claude")) return { name: "claude-cli", parse: claudeCliParse };
   if (has("codex")) return { name: "codex-cli", parse: codexCliParse };
+  if (env.ANTHROPIC_API_KEY) return { name: "api", parse: apiParse };
 
   throw new Error(
-    "no ingest backend available: set ANTHROPIC_API_KEY, or install and log into " +
-    "the claude or codex CLI. Only `ingest` needs this — `check` and `report` do not.");
+    "no ingest backend available: log into the claude or codex CLI, or set " +
+    "ANTHROPIC_API_KEY and pass --backend api. Only `ingest` needs this — " +
+    "`check` and `report` do not.");
 }

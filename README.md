@@ -38,12 +38,20 @@ these you already have — an API key, or a CLI you're logged into:
 
 | `--backend` | Needs | Notes |
 | --- | --- | --- |
-| `api` | `ANTHROPIC_API_KEY` | Fastest. The only one that works in CI. |
-| `claude-cli` | `claude`, logged in | No API key. ~30s per claim. |
+| `claude-cli` | `claude`, logged in | Default. No API key. ~30s per claim. |
 | `codex-cli` | `codex`, logged in | No API key. ~25s per claim. |
+| `api` | `ANTHROPIC_API_KEY` | Fastest, metered, and the only one CI can use. |
 
-Picked automatically in that order, or set it yourself with
-`--backend` / `CLAIMROT_INGEST`. `check` and `report` need none of them.
+Picked automatically in that order, or set it yourself with `--backend` /
+`CLAIMROT_INGEST`. A logged-in CLI wins over `ANTHROPIC_API_KEY` on purpose:
+that variable is exported in plenty of shells for unrelated reasons, and it
+shouldn't quietly start billing you. `--backend api` opts in.
+
+The CLI backends also unset `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` for the
+child process, since both CLIs otherwise let an exported key override the login
+you chose them for.
+
+`check` and `report` need none of this.
 
 ```bash
 git clone https://github.com/claimrot/claimrot

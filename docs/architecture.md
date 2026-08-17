@@ -142,16 +142,25 @@ Because that call happens once, locally, and never in CI, it does not have to be
 an API call. `src/ingest/backends.ts` offers three, all constrained by the same
 JSON Schema:
 
-| Backend | Auth | Rough cost per claim |
-| --- | --- | --- |
-| `api` | `ANTHROPIC_API_KEY` | seconds |
-| `claude-cli` | operator's Claude Code login | ~30s |
-| `codex-cli` | operator's Codex login | ~25s |
+| Backend | Auth | Rough cost per claim | |
+| --- | --- | --- | --- |
+| `claude-cli` | operator's Claude Code login | ~30s | default |
+| `codex-cli` | operator's Codex login | ~25s | |
+| `api` | `ANTHROPIC_API_KEY` | seconds | metered; the only CI-usable one |
 
-The CLIs are slower because each shells out to a whole agent, but they need no
-API key — which matters when the person running `ingest` is a contributor or a
-judge rather than the project's billing account. The API backend is the only one
-usable from CI, since the others authenticate as a logged-in human.
+The CLIs are slower, because each shells out to a whole agent. They are still
+the default, and the reason is billing rather than capability: a logged-in CLI
+spends a subscription the operator already pays for, while an API key meters per
+token. `ANTHROPIC_API_KEY` is exported in a lot of shells for unrelated reasons,
+and inheriting it as "charge this person" is a decision they never made.
+`--backend api` is how you opt in — which is what CI does, since the CLIs
+authenticate as a logged-in human and CI is not one.
+
+Choosing a CLI is only a billing decision if the CLI actually runs on the login,
+so the CLI backends delete `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` from the child
+environment. Claude Code is explicit that an exported key *"takes precedence
+over your claude.ai login"* — without stripping it, defaulting to the CLI would
+change which binary runs and not who pays.
 
 `ASSERTIONS_JSON_SCHEMA` is written out rather than derived from the zod schema:
 the SDK's `betaZodOutputFormat` helper calls `z.toJSONSchema()`, which exists
