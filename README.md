@@ -52,9 +52,12 @@ own `*.facts.json` files. A monitor that can't tell "this
 page redesigned and our collector went blind" apart from "this fact was
 genuinely removed" produces a false `REMOVED` on every redesign across that
 whole tail, and a monitor whose negatives can't be trusted is worse than no
-monitor. Bright Data Scraper Studio is what keeps the collectors alive across
-that tail without a person rewriting selectors by hand every time a site
-ships new markup.
+monitor. Bright Data Scraper Studio is what makes blindness detectable —
+never a false `REMOVED` — everywhere in the tail, and what keeps the
+collectors themselves alive, self-repairing without a person rewriting
+selectors by hand, on the hosts you've provisioned a collector for. The
+generic fallback that covers the rest of the tail inherits the detection
+half but not the repair half — see Limitations.
 
 We probed this live before building on it (`docs/probes/2026-08-17-scraper-studio.md`,
 against `whalewatch.co.nz`, a real operator site in the corpus) and confirmed
@@ -225,6 +228,20 @@ Files:
   above are still placeholders), not a general schema.org parser. A fetch
   failure here always reports `error`, never `empty` — see
   `tests/cli.test.ts`'s "generic collector fallback" tests.
+- **The generic fallback can detect blindness but cannot heal.** Healing
+  requires a real Scraper Studio collector, and the generic path is not one:
+  `src/engine/check.ts` calls `deps.heal` with the same collector ID it
+  checked with, which for the tail is the literal string `"generic"` — not a
+  Bright Data collector, so the heal call fails every time. The behaviour is
+  safe (it degrades to `UNVERIFIABLE`, exactly like any other heal failure,
+  never to a guessed verdict), but it is a real capability gap, not just a
+  coverage one: when a tail host goes blind, claimrot correctly reports that
+  it doesn't know rather than guessing — but it cannot repair itself there.
+  Self-healing, in the sense of a collector that fixes its own extraction,
+  covers only the hosts you've provisioned a collector for; the generic
+  fallback covers the rest of the tail for *detection* only. Closing that gap
+  means provisioning a real collector per host family — the setup step the
+  registry's placeholders above exist for.
 - **Scraper Studio itself under-collects prose-embedded values.** The probe
   (`docs/probes/2026-08-17-scraper-studio.md`, Probe A) found that even an
   explicit "every price on the page, as a list" prompt missed a second Adult
