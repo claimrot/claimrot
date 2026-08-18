@@ -318,9 +318,21 @@ h1 {
 /* ---- tagline + call to action ------------------------------------------ */
 
 .tagline {
-  margin: 2.4rem auto 1.4rem;
+  margin: 2.4rem auto 0.6rem;
   font-size: 1.13rem;
   color: var(--ink);
+}
+
+/* The engine that does the repairing, named where someone landing on the page
+   will see it without scrolling. Set in the same mono small-caps as every
+   other label so it reads as a credit, not a badge. */
+.byline {
+  margin: 0 auto 1.5rem;
+  /* 1.5 rather than 1: this wraps to two lines on a phone. */
+  font: 500 0.72rem/1.5 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--rust-ink);
 }
 
 .cta {
@@ -337,6 +349,37 @@ h1 {
 }
 .cta:hover { background: #33302c; }
 .cta svg { width: 1.15rem; height: 1.15rem; }
+
+/* Two things a visitor needs before they will try this: what repairs the
+   scraper, and what it costs them to run. Stated in the hero rather than
+   three sections down, because both are reasons to keep reading. */
+.notes {
+  list-style: none;
+  margin: 2.75rem auto 0;
+  padding: 1.4rem 0 0;
+  max-width: var(--wide);
+  border-top: 1px solid var(--rule);
+  display: grid;
+  gap: 1.25rem 2.75rem;
+  text-align: left;
+}
+@media (min-width: 46rem) {
+  .notes { grid-template-columns: 1fr 1fr; }
+}
+.notes__k {
+  font: 500 0.72rem/1 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--rust-ink);
+  margin: 0 0 0.45rem;
+}
+.notes p:not(.notes__k) {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+.notes strong { font-weight: 600; color: var(--ink); }
+.notes code { color: var(--ink); }
 
 /* ---- the receipt ------------------------------------------------------- */
 
