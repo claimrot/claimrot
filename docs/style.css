@@ -489,6 +489,9 @@ dd { margin: 0; }
   color: var(--muted);
 }
 .limits li:last-child { border-bottom: 1px solid var(--rule); }
+/* Same treatment as .notes strong: the thing being named steps forward out of
+   the muted body it sits in. */
+.limits strong { font-weight: 600; color: var(--ink); }
 
 /* ---- footer ------------------------------------------------------------ */
 

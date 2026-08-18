@@ -115,18 +115,21 @@ scraper broke gets turned off within a fortnight, and then it protects nobody.
 
 - **No half-life figure is published anywhere in this repo.** Measuring how fast
   cited claims decay needs an ingest run over the full 2,572-claim corpus, which
-  needs an API key this machine doesn't have. The four-claim example proves the
-  mechanism works; it says nothing about a decay rate.
+  nobody has run yet. The four-claim example proves the mechanism works; it says
+  nothing about a decay rate.
 - **Checks run per claim, not per page.** A page cited by three claims is fetched
   three times — roughly 2.7× the requests the corpus needs. Fixing it means
   reworking the loop that per-host pacing is built around, so it waited.
-- **Relocation only follows the site's own signals.** When a value vanishes,
-  claimrot looks for it via links on the cited page and the host's
-  `sitemap.xml`, on that host only, and stops after five candidates. A value
-  that moved somewhere neither points to still reports as `REMOVED`.
-- **The generic fallback can detect blindness but not repair it.** Healing needs
-  a real Scraper Studio collector, so self-repair covers hosts you've
-  provisioned one for; everything else degrades to `UNVERIFIABLE`.
+- **Self-repair needs a Scraper Studio collector.** Bright Data rewrites the
+  scraper for every host you've provisioned one for. Past those, the generic
+  JSON-LD fallback still detects that it has gone blind — it just reports
+  `UNVERIFIABLE` rather than repairing itself, so the blind spot is always
+  declared, never guessed through.
+- **Relocation follows the site's own signals only.** When a value moves,
+  claimrot finds it via links on the cited page and the host's `sitemap.xml`
+  and reports `MOVED` with the new URL. That search stays on one host and stops
+  after five candidates; a value moved somewhere neither points to still
+  reports as `REMOVED`.
 - **The blob-label screen is structural, not semantic.** A genuine two-axis grid
   cell labelled "Adult Weekday" gets screened out when "Adult" and "Weekday" are
   both anchors. It fails toward `UNVERIFIABLE`, never toward a wrong verdict.

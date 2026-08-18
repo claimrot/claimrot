@@ -198,9 +198,9 @@
       <h3>Heal on blindness, never on change</h3>
       <p>
         Finding nothing is not evidence of absence &mdash; it is a statement
-        about our own eyesight. So an empty result triggers a repair of the
-        scraper, and then a look one page over, before it is allowed to become
-        a verdict.
+        about our own eyesight. So an empty result sends the scraper to
+        <strong>Bright Data Scraper Studio</strong> to be rewritten, then looks
+        one page over, before it is allowed to become a verdict.
       </p>
     </li>
     <li>
@@ -271,7 +271,7 @@ npm run cli -- report</code></pre>
 <section>
     <div class="rail">
     <p class="eyebrow">Honesty</p>
-    <h2>What it can&rsquo;t do</h2>
+    <h2>Where it stops</h2>
   </div>
   <div class="col">
   <p>
@@ -280,18 +280,20 @@ npm run cli -- report</code></pre>
   </p>
   <ul class="limits">
     <li>
-      The generic fallback detects blindness but cannot repair itself. Healing
-      needs a real Scraper Studio collector, so self-repair reaches the hosts you
-      have provisioned one for.
+      Self-repair runs through <strong>Bright Data Scraper Studio</strong>, so
+      it covers every host you have provisioned a collector for. Past those, the
+      generic JSON-LD fallback still notices it has gone blind &mdash; it just
+      reports <code>UNVERIFIABLE</code> instead of rewriting itself.
     </li>
     <li>
       Claims are checked one at a time rather than one fetch per page, so a page
       cited by several claims is fetched several times.
     </li>
     <li>
-      Relocation searches the cited page&rsquo;s own links and the host&rsquo;s
-      sitemap, and stops after five candidates. A value moved somewhere neither
-      of those points to still reads as <code>REMOVED</code>.
+      When a value moves, claimrot follows the site&rsquo;s own links and
+      sitemap to find it and reports <code>MOVED</code> with the new URL. It
+      tries five candidates on that host; a value moved somewhere neither
+      points to still reads as <code>REMOVED</code>.
     </li>
     <li>
       It verifies a claim against <em>the source it cites</em>. It has no opinion
