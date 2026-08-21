@@ -28,8 +28,55 @@ CREATE TABLE IF NOT EXISTS candidates (
 );
 CREATE TABLE IF NOT EXISTS verdicts (
   id TEXT PRIMARY KEY, check_id TEXT NOT NULL, claim_id TEXT NOT NULL,
+  assertion_id TEXT,
   verdict TEXT NOT NULL, confidence REAL NOT NULL, evidence_json TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS extraction_monitors (
+  id TEXT PRIMARY KEY,
+  source_url TEXT NOT NULL,
+  schema_json TEXT NOT NULL,
+  interval_days INTEGER NOT NULL DEFAULT 90,
+  collector_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  last_run_at TEXT,
+  next_run_at TEXT,
+  last_status TEXT
+);
+CREATE TABLE IF NOT EXISTS extraction_runs (
+  id TEXT PRIMARY KEY,
+  monitor_id TEXT NOT NULL,
+  started_at TEXT NOT NULL,
+  completed_at TEXT,
+  status TEXT NOT NULL,
+  dry_run INTEGER NOT NULL DEFAULT 0,
+  collector_id TEXT NOT NULL,
+  collector_version TEXT,
+  heal_status TEXT NOT NULL DEFAULT 'NOT_NEEDED',
+  error TEXT
+);
+CREATE TABLE IF NOT EXISTS extracted_values (
+  id TEXT PRIMARY KEY,
+  run_id TEXT NOT NULL,
+  monitor_id TEXT NOT NULL,
+  field TEXT NOT NULL,
+  field_type TEXT NOT NULL,
+  status TEXT NOT NULL,
+  value_num REAL,
+  value_text TEXT,
+  unit TEXT,
+  label TEXT NOT NULL DEFAULT '',
+  context TEXT NOT NULL DEFAULT '',
+  path TEXT NOT NULL DEFAULT '',
+  confidence REAL NOT NULL DEFAULT 0,
+  error TEXT,
+  evidence_json TEXT NOT NULL DEFAULT '{}',
+  scraped_at TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_claims_checked ON claims(checked_at);
 CREATE INDEX IF NOT EXISTS idx_verdicts_claim ON verdicts(claim_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_extraction_runs_monitor
+  ON extraction_runs(monitor_id, started_at);
+CREATE INDEX IF NOT EXISTS idx_extracted_values_monitor
+  ON extracted_values(monitor_id, field, scraped_at);

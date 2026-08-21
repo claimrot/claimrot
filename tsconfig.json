@@ -10,5 +10,5 @@
     "skipLibCheck": true,
     "declaration": true
   },
-  "include": ["src/**/*", "action/**/*"]
+  "include": ["src/**/*", "action/**/*", "scripts/**/*"]
 }

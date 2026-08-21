@@ -134,7 +134,7 @@ async function main() {
         },
       }));
     const checkedAt = new Date().toISOString();
-    insVerdict.run(randomUUID(), "", c.id, resolution.verdict, resolution.confidence,
+    insVerdict.run(randomUUID(), "", c.id, assertion.id, resolution.verdict, resolution.confidence,
       JSON.stringify(resolution), checkedAt);
     updLastChecked.run(checkedAt, c.id);
     console.log(`  verdict: ${resolution.verdict}\t confidence ${resolution.confidence.toFixed(2)}\t ${resolution.reason}`);

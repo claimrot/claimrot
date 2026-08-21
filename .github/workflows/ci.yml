@@ -16,6 +16,7 @@ jobs:
       - run: npm run build
       - run: npm test
       - run: npx tsc --noEmit
+      - run: npm run check:pages-demo
 
   dogfood-action:
     # Runs our own action against a fixture with no failing verdict above the

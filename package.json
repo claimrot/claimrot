@@ -1,13 +1,16 @@
 {
   "name": "claimrot",
   "version": "0.1.0",
-  "description": "Monitor (claim, source_url) pairs and find out which claims have quietly stopped being true.",
+  "description": "Extract and monitor structured facts from public web pages with local history and self-healing.",
   "license": "MIT",
   "repository": "https://github.com/claimrot/claimrot",
   "type": "module",
   "bin": { "claimrot": "./dist/src/cli.js" },
   "scripts": {
     "build": "tsc && cp src/db/schema.sql dist/src/db/",
+    "build:pages": "tsx scripts/build-pages.ts",
+    "check:pages-demo": "tsx scripts/build-pages.ts --check-demo docs/demo/index.html",
+    "sync:pages-demo": "tsx scripts/build-pages.ts --demo-only docs/demo/index.html",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "cli": "tsx src/cli.ts"

@@ -1,7 +1,9 @@
 #!/usr/bin/env node
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import { spawnSync } from "node:child_process";
 import { globSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import type Database from "better-sqlite3";
 import { openDb } from "./db/index.js";
 import { rowToAssertion, rowToClaim } from "./db/rows.js";
@@ -20,10 +22,22 @@ import { checkAssertion } from "./engine/check.js";
 import type { EngineDeps } from "./engine/check.js";
 import { nextCheckAt } from "./engine/schedule.js";
 import { HostQueue, isAllowed, ROBOTS_UA, sleep, MIN_HOST_INTERVAL_MS } from "./net/politeness.js";
+import { fetchRobots } from "./net/robots.js";
 import { safeUrl } from "./url.js";
 import { renderReceipts, renderVerdictsJson } from "./report/receipts.js";
+import { renderDashboard } from "./report/dashboard.js";
+import { repeatAmbiguousClaimIds } from "./report/current.js";
 import { halfLife } from "./report/study.js";
 import type { Verdict } from "./model/types.js";
+import {
+  monitorIdFor, parseIntervalDays, readExtractionSchema,
+} from "./extract/schema.js";
+import { executeExtraction } from "./extract/service.js";
+import {
+  getMonitorSnapshot, listExtractionMonitors, listMonitorSnapshots, upsertExtractionMonitor,
+} from "./extract/store.js";
+import type { ExtractionOutcome, MonitorSnapshot } from "./extract/types.js";
+import { startViewServer } from "./server/view.js";
 type Db = Database.Database;
 type Stmt = Database.Statement;
 
@@ -34,49 +48,37 @@ type Stmt = Database.Statement;
 export { UPDATE_LAST_CHECKED_SQL };
 export { GENERIC_COLLECTOR_ID, isGenericCollector };
 export { runGeneric };
-export { ROBOTS_UA };
+export { ROBOTS_UA, fetchRobots };
 
-const ROBOTS_FETCH_TIMEOUT_MS = 10_000;
+function printExtractionOutcome(result: ExtractionOutcome, asJson: boolean): void {
+  if (asJson) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+  console.log(`${result.status}\t${result.monitorId}\t${result.url}`);
+  for (const field of Object.values(result.fields)) {
+    const value = field.value === null ? "—" : `${field.value}${field.unit ? ` ${field.unit}` : ""}`;
+    console.log(`  ${field.field}\t${field.status}\t${value}`);
+  }
+  if (result.healStatus !== "NOT_NEEDED") console.log(`  heal\t${result.healStatus}`);
+  if (result.error) console.log(`  error\t${result.error}`);
+}
 
-/**
- * Fetches robots.txt for a host, identified (ROBOTS_UA) and time-bounded
- * (ROBOTS_FETCH_TIMEOUT_MS — a hung fetch must not stall that host's whole
- * queue). Any failure — timeout, network error, or a non-ok response
- * including 404 — yields "" (allowed): a robots-fetch problem must never
- * read as a silent refusal to check; only an actually-present Disallow does
- * that. `fetchImpl` defaults to global fetch and exists purely so a test can
- * inject a fake, the same pattern collect/studio.ts uses for Exec.
- */
-export async function fetchRobots(
-  host: string,
-  fetchImpl: typeof fetch = fetch,
-): Promise<string> {
-  try {
-    const res = await fetchImpl(`https://${host}/robots.txt`, {
-      headers: { "user-agent": ROBOTS_UA },
-      signal: AbortSignal.timeout(ROBOTS_FETCH_TIMEOUT_MS),
-    });
-    return res.ok ? await res.text() : "";
-  } catch {
-    return "";
+function printSnapshot(snapshot: MonitorSnapshot): void {
+  console.log(`${snapshot.monitor.id}\t${snapshot.latestRun?.status ?? "NOT_RUN"}\t${snapshot.monitor.sourceUrl}`);
+  for (const field of Object.values(snapshot.fields)) {
+    const value = field.value === null ? "—" : `${field.value}${field.unit ? ` ${field.unit}` : ""}`;
+    console.log(`  ${field.field}\t${field.status}\t${value}`);
   }
 }
 
 /**
- * Spec §5 escalation: a claim whose two most recent verdicts are BOTH
- * AMBIGUOUS has read two ways twice running — that's a human's problem, not
- * something the scheduler or the collector can resolve on its own.
+ * Spec §5 escalation: a claim with an assertion whose two most recent
+ * verdicts are BOTH AMBIGUOUS has read two ways twice running — that's a
+ * human's problem, not something the scheduler can resolve on its own.
  */
 export function repeatAmbiguousClaims(db: Db): string[] {
-  const rows = db.prepare(
-    `SELECT claim_id FROM (
-       SELECT claim_id, verdict,
-              ROW_NUMBER() OVER (PARTITION BY claim_id ORDER BY created_at DESC) AS rn
-       FROM verdicts
-     ) WHERE rn <= 2 GROUP BY claim_id
-       HAVING COUNT(*) = 2 AND SUM(verdict = 'AMBIGUOUS') = 2`,
-  ).all() as { claim_id: string }[];
-  return rows.map((r) => r.claim_id);
+  return repeatAmbiguousClaimIds(db);
 }
 
 /**
@@ -205,7 +207,7 @@ function runOneCheck(row: DueAssertionRow, queue: HostQueue, ctx: CheckContext):
       }),
     });
     const checkedAt = new Date().toISOString();
-    ctx.insVerdict.run(`${row.id}:${Date.now()}`, "", row.claim_id, resolution.verdict,
+    ctx.insVerdict.run(`${row.id}:${Date.now()}`, "", row.claim_id, row.id, resolution.verdict,
       resolution.confidence, JSON.stringify(resolution), checkedAt);
     ctx.updClaimChecked.run(checkedAt, row.claim_id);
     console.log(`${resolution.verdict}\t${row.claim_id}\t${resolution.reason}`);
@@ -224,17 +226,131 @@ export function buildProgram(): Command {
   const program = new Command("claimrot");
   program.option("--db <path>", "sqlite path", "claimrot.db");
 
+  program.command("extract")
+    .description("create or update a structured extraction monitor and run it immediately")
+    .argument("<url>", "public source URL")
+    .requiredOption("-s, --schema <path>", "JSON extraction schema")
+    .option("--id <id>", "stable monitor ID (derived from the URL by default)")
+    .option("--interval <days>", "rescan interval in days")
+    .option("--json", "emit the extraction result as JSON")
+    .action(async (
+      url: string,
+      opts: { schema: string; id?: string; interval?: string; json?: boolean },
+    ) => {
+      const parsed = safeUrl(url);
+      if (!parsed || !["http:", "https:"].includes(parsed.protocol)
+        || parsed.username !== "" || parsed.password !== "") {
+        throw new Error(`Only unauthenticated HTTP(S) URLs can be extracted: ${url}`);
+      }
+      if (parsed.hostname === "api.viator.com") {
+        throw new Error("Authenticated partner APIs are outside claimrot's public-data scope");
+      }
+      const definition = readExtractionSchema(opts.schema);
+      const id = opts.id ?? monitorIdFor(parsed.href);
+      if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(id)) {
+        throw new Error("monitor ID must be 1-128 letters, numbers, dots, underscores, colons, or hyphens");
+      }
+      const intervalDays = opts.interval
+        ? parseIntervalDays(opts.interval)
+        : definition.intervalDays ?? 90;
+      const db = openDb(program.opts().db);
+      upsertExtractionMonitor(db, {
+        id,
+        sourceUrl: parsed.href,
+        definition,
+        intervalDays,
+        collectorId: resolveCollector(parsed.href),
+        now: new Date().toISOString(),
+      });
+      printExtractionOutcome(
+        await executeExtraction(db, id, { force: true }),
+        Boolean(opts.json),
+      );
+    });
+
+  program.command("get")
+    .description("read the latest persisted extraction result")
+    .argument("[id]", "monitor ID; omit to read every monitor")
+    .option("--json", "emit stable structured JSON")
+    .action((id: string | undefined, opts: { json?: boolean }) => {
+      const db = openDb(program.opts().db);
+      if (id) {
+        const snapshot = getMonitorSnapshot(db, id);
+        if (!snapshot) throw new Error(`Unknown extraction monitor: ${id}`);
+        if (opts.json) console.log(JSON.stringify(snapshot, null, 2));
+        else printSnapshot(snapshot);
+        return;
+      }
+      const snapshots = listMonitorSnapshots(db);
+      if (opts.json) console.log(JSON.stringify(snapshots, null, 2));
+      else if (snapshots.length) snapshots.forEach(printSnapshot);
+      else console.log("No extraction monitors in this database.");
+    });
+
+  program.command("run")
+    .description("run due extraction monitors")
+    .argument("[id]", "one monitor ID; omit to run every due monitor")
+    .option("--force", "run even when the monitor is not due")
+    .option("--json", "emit results as JSON")
+    .action(async (id: string | undefined, opts: { force?: boolean; json?: boolean }) => {
+      const db = openDb(program.opts().db);
+      const ids = id ? [id] : listExtractionMonitors(db).map((monitor) => monitor.id);
+      const results: ExtractionOutcome[] = [];
+      // Sequential on purpose: separate monitor executions must not create
+      // independent host queues that can burst requests at the same operator.
+      for (const monitorId of ids) {
+        results.push(await executeExtraction(db, monitorId, { force: Boolean(opts.force) }));
+      }
+      if (opts.json) console.log(JSON.stringify(id ? results[0] : results, null, 2));
+      else if (results.length) results.forEach((result) => printExtractionOutcome(result, false));
+      else console.log("No extraction monitors in this database.");
+    });
+
+  program.command("test")
+    .description("run an extraction without replacing the monitor's current result")
+    .argument("<id>", "monitor ID")
+    .option("--json", "emit the test result as JSON")
+    .action(async (id: string, opts: { json?: boolean }) => {
+      const db = openDb(program.opts().db);
+      printExtractionOutcome(
+        await executeExtraction(db, id, { force: true, dryRun: true }),
+        Boolean(opts.json),
+      );
+    });
+
+  program.command("view")
+    .description("serve the local operational dashboard")
+    .argument("[database]", "SQLite database path (defaults to --db or ./claimrot.db)")
+    .option("-p, --port <port>", "loopback port", "4174")
+    .action(async (database: string | undefined, opts: { port: string }) => {
+      const port = Number(opts.port);
+      if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+        throw new Error("port must be a whole number from 1 to 65535");
+      }
+      const view = await startViewServer(database ?? program.opts().db, { port });
+      console.log(`claimrot view: ${view.url}`);
+      const stop = () => { void view.close(); };
+      process.once("SIGINT", stop);
+      process.once("SIGTERM", stop);
+      await view.done;
+    });
+
   program.command("ingest").argument("<glob>", "fact-pack glob")
     .option("--backend <name>", "api | claude-cli | codex-cli (default: whatever this machine can authenticate)")
     .action(async (pattern: string, opts: { backend?: string }) => {
       const db = openDb(program.opts().db);
       const insClaim = db.prepare(INSERT_CLAIM_SQL);
       const insAssertion = db.prepare(INSERT_ASSERTION_SQL);
+      const insDocument = db.prepare(
+        `INSERT INTO documents (id, uri, title) VALUES (?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET uri = excluded.uri, title = excluded.title`,
+      );
       const { name, parse } = selectBackend(opts.backend, process.env, onPath);
       console.log(`ingest backend: ${name}`);
 
       for (const file of globSync(pattern)) {
         for (const claim of readFactPack(file)) {
+          insDocument.run(claim.documentId, file, claim.documentId);
           const assertions = await normalizeClaim(claim.text, claim.id, { parse });
           insClaim.run({ ...claim, volatile: claim.volatile ? 1 : 0,
             status: assertions.length ? "active" : "untestable" });
@@ -275,15 +391,19 @@ export function buildProgram(): Command {
     });
 
   program.command("report").option("--verdict <v>", "filter by verdict", "DRIFTED")
-    .option("--json", "emit every claim's latest verdict as JSON (for the GitHub Action), ignoring --verdict")
+    .addOption(new Option("--json", "emit every claim's current verdict as JSON (for the GitHub Action), ignoring --verdict").conflicts("html"))
+    .addOption(new Option("--html", "emit a self-contained HTML dashboard of every current claim, ignoring --verdict").conflicts("json"))
     .action((opts) => {
       const db = openDb(program.opts().db);
-
       if (opts.json) {
         // Feeds action/main.ts (docs/design.md §8.2) — the whole checked set,
         // not filtered by --verdict, since the action needs HOLDS/UNVERIFIABLE
         // counts too, not just the failing verdicts.
         console.log(JSON.stringify(renderVerdictsJson(db), null, 2));
+        return;
+      }
+      if (opts.html) {
+        console.log(renderDashboard(db));
         return;
       }
 
@@ -302,4 +422,6 @@ export function buildProgram(): Command {
   return program;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) buildProgram().parse();
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+  buildProgram().parse();
+}

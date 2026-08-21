@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+  <title>Claim health · claimrot</title>
+  <style>
+    :root {
+      --paper:#f7f3ec; --surface:#fffdfa; --surface-soft:#f3eee6; --ink:#1d1c19;
+      --muted:#696258; --line:#ddd4c7; --line-strong:#aa9e8e; --rust:#bd3f18;
+      --rust-soft:#fae6d8; --green:#17623d; --green-soft:#e3eee6;
+      --violet:#68508e; --violet-soft:#eee8f4; --shadow:0 14px 42px rgb(52 38 23 / 7%);
+      --sans:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      --mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+    }
+    *{box-sizing:border-box} html{background:var(--paper);color:var(--ink);font-family:var(--sans);scroll-behavior:smooth}
+    body{margin:0;min-width:20rem} button,input{font:inherit} a{color:inherit}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    :focus-visible{outline:2px solid var(--rust);outline-offset:3px}.app{display:grid;grid-template-columns:14.25rem minmax(0,1fr);min-height:100vh}
+    .sidebar{position:sticky;top:0;height:100vh;padding:1.9rem 1rem;border-right:1px solid var(--line);background:rgb(255 253 250 / 72%);display:flex;flex-direction:column}
+    .brand{display:inline-flex;align-items:center;gap:.7rem;font-size:1.28rem;font-weight:780;letter-spacing:-.03em}.brand svg{width:1.8rem;height:1.8rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+    .side-nav{display:grid;gap:.35rem;margin-top:2.5rem}.side-nav a{display:flex;align-items:center;gap:.75rem;min-height:3rem;padding:.7rem .8rem;border-left:2px solid transparent;text-decoration:none;color:var(--muted)}
+    .side-nav a:hover{color:var(--ink);background:var(--surface-soft)}.side-nav a:first-child{color:var(--ink);border-left-color:var(--rust);background:var(--surface-soft)}.side-nav span{width:1.25rem;text-align:center;font-family:var(--mono)}
+    .side-note{margin:auto 0 0;padding:.9rem;color:var(--muted);border-top:1px solid var(--line);font:.68rem/1.6 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    main{min-width:0;padding:2rem clamp(1rem,3vw,3rem) 4rem}.topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:1.5rem;margin:0 auto 1.5rem;max-width:87rem}
+    h1{margin:0;font-size:clamp(2rem,4vw,3rem);line-height:1;letter-spacing:-.055em}.subtitle{margin:.45rem 0 0;color:var(--muted);font-size:1rem}.top-actions{display:flex;align-items:center;gap:1.2rem;color:var(--muted);font-size:.86rem}.top-actions time{white-space:nowrap}
+    .primary{display:inline-flex;align-items:center;justify-content:center;min-height:2.9rem;padding:.7rem 1.1rem;color:white;background:var(--rust);border:1px solid var(--rust);text-decoration:none;font-weight:700}.primary:hover{background:#983315}
+    .content{max-width:87rem;margin:0 auto}.metrics{display:grid;grid-template-columns:2.2fr repeat(3,1fr);gap:.9rem}.metric{min-height:9.5rem;padding:1.25rem;border:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow);display:flex;align-items:center;gap:1.25rem}
+    .metric strong{display:block;font-size:2.5rem;line-height:1;letter-spacing:-.05em}.metric small{display:block;margin-top:.55rem;font:700 .68rem/1.2 var(--mono);text-transform:uppercase;letter-spacing:.08em}.metric-icon{width:3.4rem;height:3.4rem;display:grid;place-items:center;border-radius:50%;font-size:1.45rem}.metric-icon.green{color:var(--green);background:var(--green-soft)}.metric-icon.rust{color:var(--rust);background:var(--rust-soft)}.metric-icon.violet{color:var(--violet);background:var(--violet-soft)}
+    .health-ring{--health:0%;width:6.6rem;height:6.6rem;flex:0 0 auto;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--green) var(--health),var(--rust) 0);position:relative}.health-ring--empty{background:var(--line-strong)}.health-ring::after{content:"";position:absolute;inset:.75rem;border-radius:50%;background:var(--surface)}.health-ring span{position:relative;z-index:1;font:700 .68rem/1.2 var(--mono);text-transform:uppercase;color:var(--muted)}
+    .dashboard-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(19rem,1fr);gap:.9rem;margin-top:.9rem}.panel{border:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow);min-width:0}.panel-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.15rem;border-bottom:1px solid var(--line)}.panel-head h2{margin:0;font-size:1.05rem}.panel-head span{color:var(--muted);font:.68rem/1.3 var(--mono);text-transform:uppercase;letter-spacing:.06em}.chart-panel{min-height:22rem}.chart-wrap{padding:1rem 1.2rem .6rem}.health-chart{display:block;width:100%;height:auto}.health-chart line{stroke:var(--line);stroke-dasharray:3 4}.health-chart text{fill:var(--muted);font:10px var(--mono)}.health-chart path{fill:none;stroke:var(--green);stroke-width:3;stroke-linejoin:round}.health-chart circle{fill:var(--green)}.health-chart .chart-value{fill:var(--green);font-weight:700;font-size:13px}.chart-wrap p{display:flex;gap:1rem;margin:.25rem 0 0;color:var(--muted);font-size:.78rem}.chart-wrap p span{display:flex;align-items:center;gap:.4rem}.chart-wrap i{width:.55rem;height:.55rem;border-radius:50%}.chart-wrap .fresh{background:var(--green)}.chart-wrap .drifted{background:var(--rust)}
+    .chart-empty,.panel-empty{min-height:15rem;display:grid;place-content:center;text-align:center;padding:2rem}.chart-empty span,.panel-empty span{color:var(--muted);margin-top:.4rem}.attention-list{padding:.7rem;display:grid;gap:.55rem}.attention-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:.75rem;padding:.75rem;border:1px solid var(--line);text-decoration:none}.attention-row:hover{border-color:var(--line-strong);background:var(--surface-soft)}.attention-row>span:nth-child(2){min-width:0}.attention-row strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.88rem}.attention-row small{display:block;margin-top:.25rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.attention-icon{width:2.3rem;height:2.3rem;display:grid;place-items:center;border-radius:.45rem;font-weight:800}.attention-icon.status--drifted,.attention-icon.status--removed,.attention-icon.status--moved{color:var(--rust);background:var(--rust-soft)}.attention-icon.status--ambiguous,.attention-icon.status--conflict,.attention-icon.status--unverifiable,.attention-icon.status--unknown{color:var(--violet);background:var(--violet-soft)}.arrow{color:var(--muted);font-size:1.4rem}
+    .status{display:inline-flex;align-items:center;gap:.4rem;font:700 .66rem/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}.status>span{width:.46rem;height:.46rem;border-radius:50%;background:currentColor}.status--holds{color:var(--green)}.status--drifted,.status--removed{color:var(--rust)}.status--moved{color:#9a5a00}.status--ambiguous,.status--conflict,.status--unverifiable,.status--unknown{color:var(--violet)}.status--unchecked{color:var(--muted)}
+    .receipt-steps{list-style:none;margin:0;padding:.75rem 1rem 1rem;display:grid;gap:.4rem}.receipt-steps li{display:flex;align-items:center;gap:.75rem;padding:.55rem 0}.receipt-steps li>span{width:2.6rem;height:2.6rem;display:grid;place-items:center;border-radius:.4rem;background:var(--surface-soft);font-size:1.1rem}.receipt-steps strong,.receipt-steps small{display:block}.receipt-steps strong{font-size:.86rem}.receipt-steps small{margin-top:.2rem;color:var(--muted)}
+    .claims-panel{margin-top:0}.claims-toolbar{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.8rem 1rem;border-bottom:1px solid var(--line)}.filters{display:flex;flex-wrap:wrap;gap:.35rem}.filter{min-height:2.75rem;padding:.5rem .75rem;border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer}.filter:hover{border-color:var(--line)}.filter[aria-pressed="true"]{color:white;background:var(--ink)}.search{width:min(18rem,38vw);min-height:2.75rem;padding:.55rem .7rem;border:1px solid var(--line-strong);background:var(--surface)}
+    .results-meta{display:flex;justify-content:space-between;gap:1rem;margin:0;padding:.65rem 1rem;color:var(--muted);border-bottom:1px solid var(--line);font:.67rem/1.4 var(--mono);text-transform:uppercase;letter-spacing:.06em}.claim-grid{display:grid;grid-template-columns:minmax(16rem,1.65fr) minmax(13rem,1.35fr) minmax(7rem,.65fr) minmax(7rem,.6fr);align-items:center;gap:1rem}.claim-columns{padding:.7rem 1rem;color:var(--muted);background:var(--surface-soft);font:.67rem/1.2 var(--mono);text-transform:uppercase;letter-spacing:.06em}.claim-row{border-bottom:1px solid var(--line)}.claim-row[hidden]{display:none}.claim-row summary{list-style:none;cursor:pointer;padding:.9rem 1rem}.claim-row summary::-webkit-details-marker{display:none}.claim-row summary:hover{background:var(--surface-soft)}.claim-cell{min-width:0;font-size:.82rem}.claim-cell small{display:block;margin-bottom:.25rem;color:var(--muted);font:.62rem/1.2 var(--mono);text-transform:uppercase;letter-spacing:.05em}.claim-cell strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.claim-cell .source-link{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.claim-time{display:flex;justify-content:space-between;align-items:center;color:var(--muted)}
+    .source-link{display:inline-flex;gap:.35rem;color:var(--ink);text-underline-offset:.2rem}.source-link--plain{color:var(--muted)}.claim-receipt{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.75rem;padding:1rem;background:var(--surface-soft);border-top:1px solid var(--line)}.claim-receipt>div{padding:.8rem;border-left:2px solid var(--line-strong);background:var(--surface)}.claim-receipt span{display:block;margin-bottom:.35rem;color:var(--muted);font:.63rem/1.2 var(--mono);text-transform:uppercase;letter-spacing:.06em}.claim-receipt strong{font-size:.8rem;line-height:1.45;overflow-wrap:anywhere}.escalation{grid-column:1/-1;margin:0;padding:.65rem;color:var(--violet);border:1px solid var(--violet);font:700 .66rem/1.3 var(--mono);text-transform:uppercase;letter-spacing:.06em}.empty{padding:3rem 1rem;text-align:center}.empty strong,.empty span{display:block}.empty span{margin-top:.4rem;color:var(--muted)}
+    .page-footer{max-width:87rem;margin:1.2rem auto 0;padding:1rem 0;color:var(--muted);font:.67rem/1.5 var(--mono)}.page-footer a{color:var(--ink)}
+    @media(max-width:68rem){.metrics{grid-template-columns:repeat(2,1fr)}.dashboard-grid{grid-template-columns:1fr}.claims-panel{grid-column:auto}.claim-grid{grid-template-columns:minmax(14rem,1.5fr) minmax(11rem,1fr) minmax(7rem,.6fr) minmax(7rem,.6fr)}}
+    @media(max-width:50rem){.app{display:block}.sidebar{position:static;width:auto;height:auto;padding:1rem;border-right:0;border-bottom:1px solid var(--line);display:block}.side-nav{display:flex;overflow-x:auto;margin-top:1rem}.side-nav a{white-space:nowrap}.side-note{display:none}main{padding-top:1.3rem}.topbar{align-items:flex-start}.top-actions time{display:none}.claim-columns{display:none}.claim-grid{grid-template-columns:1fr 1fr}.claim-cell::before{content:attr(data-label);display:block;margin-bottom:.25rem;color:var(--muted);font:.6rem/1.2 var(--mono);text-transform:uppercase}.claim-name{grid-column:1/-1}.claim-receipt{grid-template-columns:1fr 1fr}}
+    @media(max-width:34rem){.metrics{grid-template-columns:1fr}.metric{min-height:7.5rem}.topbar{display:block}.top-actions{margin-top:1rem}.claims-toolbar{align-items:stretch;flex-direction:column}.search{width:100%}.claim-grid,.claim-receipt{grid-template-columns:1fr}.attention-row{grid-template-columns:auto minmax(0,1fr) auto}.attention-row .status{display:none}.claim-name{grid-column:auto}.health-ring{width:5.5rem;height:5.5rem}.sidebar .brand{margin-left:.35rem}}
+    @media print{.sidebar,.primary,.claims-toolbar{display:none}.app{display:block}main{padding:1rem}.panel,.metric{box-shadow:none}.claim-row{break-inside:avoid}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <span class="brand">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M9.5 14.5 14.5 9.5"/>
+      <path d="M11 6.5 12.8 4.7a4.6 4.6 0 0 1 6.5 6.5L17.5 13"/>
+      <path d="M13 17.5l-1.8 1.8a4.6 4.6 0 0 1-6.5-6.5L6.5 11"/>
+    </svg>claimrot
+  </span>
+      <nav class="side-nav" aria-label="Report sections">
+        <a href="#overview"><span aria-hidden="true">▦</span>Overview</a>
+        <a href="#claims"><span aria-hidden="true">▤</span>Claims</a>
+        <a href="#attention"><span aria-hidden="true">!</span>Attention</a>
+        <a href="#activity"><span aria-hidden="true">◷</span>Activity</a>
+        <a href="https://claimrot.github.io/claimrot/"><span aria-hidden="true">↗</span>About</a>
+      </nav>
+      <p class="side-note">Static local report<br>No data uploaded</p>
+    </aside>
+    <main>
+      <header class="topbar" id="overview">
+        <div><h1>Claim health</h1><p class="subtitle">Are the claims you publish still valid? Checked against their sources.</p></div>
+        <div class="top-actions"><time datetime="2026-08-17T11:12:17.775Z">◷ Last checked Just now</time><a class="primary" href="https://claimrot.github.io/claimrot/#start">＋ Monitor a claim</a></div>
+      </header>
+      <div class="content">
+        <section class="metrics" aria-label="Report summary">
+          <div class="metric"><div class="health-ring" style="--health:50%"><span>checked</span></div><div><strong>50%</strong><small>Currently valid</small></div></div>
+          <div class="metric"><span class="metric-icon green" aria-hidden="true">↗</span><div><strong>4</strong><small>Monitored</small></div></div>
+          <div class="metric"><span class="metric-icon rust" aria-hidden="true">!</span><div><strong>1</strong><small>Need action</small></div></div>
+          <div class="metric"><span class="metric-icon violet" aria-hidden="true">◉</span><div><strong>1</strong><small>Need review</small></div></div>
+        </section>
+        <div class="dashboard-grid">
+          <section class="panel chart-panel" id="activity"><div class="panel-head"><h2>Health over time</h2><span>5 checkpoints</span></div><div class="chart-wrap">
+    <svg class="health-chart" viewBox="0 0 620 174" role="img" aria-label="Claim health changed from 100 to 50 percent across 5 recorded checks">
+      <line x1="42" y1="16" x2="602" y2="16"/><text x="0" y="20">100%</text><line x1="42" y1="47.5" x2="602" y2="47.5"/><text x="0" y="51.5">75%</text><line x1="42" y1="79" x2="602" y2="79"/><text x="0" y="83">50%</text><line x1="42" y1="110.5" x2="602" y2="110.5"/><text x="0" y="114.5">25%</text><line x1="42" y1="142" x2="602" y2="142"/><text x="0" y="146">0%</text>
+      <path d="M 42.0 16.0 H 182.0 V 16.0 H 322.0 V 57.6 H 462.0 V 79.0 H 602.0 V 79.0"/>
+      <circle cx="42" cy="16" r="3"/>
+      <circle cx="602" cy="79" r="4"/>
+      <text class="chart-value" x="564" y="69">50%</text>
+      <text class="chart-date" x="42" y="168">Apr 4</text>
+      <text class="chart-date" x="602" y="168" text-anchor="end">Aug 17</text>
+    </svg>
+    <p><span><i class="fresh"></i>Currently valid</span><span><i class="drifted"></i>Needs attention</span></p>
+  </div></section>
+          <section class="panel" id="attention"><div class="panel-head"><h2>Needs attention</h2><span>2 claims</span></div><div class="attention-list"><a class="attention-row" href="#claim-kaikoura-whale-watch-demo%23adult-drifted">
+    <span class="attention-icon status--drifted" aria-hidden="true">!</span>
+    <span><strong>Adult admission on the Ocean Cabin tour is NZ$170.</strong><small>&quot;Adult&quot; now reads 175, expected 170 · 29 days ago</small></span>
+    <span class="status status--drifted"><span aria-hidden="true"></span>Drifted</span><span class="arrow" aria-hidden="true">›</span>
+  </a><a class="attention-row" href="#claim-kaikoura-whale-watch-demo%23senior-blind">
+    <span class="attention-icon status--unverifiable" aria-hidden="true">◉</span>
+    <span><strong>Senior admission on the Ocean Cabin tour is NZ$140.</strong><small>The source did not expose a reliable senior price after the scraper retried. · Just now</small></span>
+    <span class="status status--unverifiable"><span aria-hidden="true"></span>Unverifiable</span><span class="arrow" aria-hidden="true">›</span>
+  </a></div></section>
+          <section class="panel claims-panel" id="claims">
+            <div class="panel-head"><h2>Claims</h2><span>Expand a row for its receipt</span></div>
+            <div class="claims-toolbar">
+              <div class="filters" role="group" aria-label="Filter claims">
+                <button class="filter" type="button" data-filter="all" aria-pressed="true">All</button>
+                <button class="filter" type="button" data-filter="action" aria-pressed="false">Needs action</button>
+                <button class="filter" type="button" data-filter="review" aria-pressed="false">Needs review</button>
+                <button class="filter" type="button" data-filter="holds" aria-pressed="false">Holds</button>
+                <button class="filter" type="button" data-filter="unchecked" aria-pressed="false">Not checked</button>
+              </div>
+              <label><span class="sr-only">Search claims</span><input class="search" type="search" placeholder="Search claims or sources…" autocomplete="off"></label>
+            </div>
+            <p class="results-meta"><span class="result-count" role="status" aria-live="polite">4 results</span><span>Current state per claim</span></p>
+            <div class="claim-columns claim-grid" aria-hidden="true"><span>Claim</span><span>Source</span><span>Status</span><span>Last checked</span></div>
+            <div class="claim-list"><details class="claim-row" id="claim-kaikoura-whale-watch-demo%23adult-drifted" data-group="action" data-search="adult admission on the ocean cabin tour is nz$170. https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/ drifted &quot;adult&quot; now reads 175, expected 170 whale watch kaikoura - ocean cabin pricing (demo)">
+    <summary class="claim-grid">
+      <span class="claim-cell claim-name" data-label="Claim">
+        <small>Whale Watch Kaikoura - Ocean Cabin pricing (demo)</small>
+        <strong>Adult admission on the Ocean Cabin tour is NZ$170.</strong>
+      </span>
+      <span class="claim-cell" data-label="Source"><a class="source-link" href="https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/" target="_blank" rel="noreferrer">whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/<span aria-hidden="true">↗</span></a></span>
+      <span class="claim-cell" data-label="Status"><span class="status status--drifted"><span aria-hidden="true"></span>Drifted</span></span>
+      <span class="claim-cell claim-time" data-label="Last checked">29 days ago<span aria-hidden="true">›</span></span>
+    </summary>
+    <div class="claim-receipt">
+      <div><span>Current reading</span><strong>“Adult” = 175 NZD</strong></div>
+      <div><span>Why</span><strong>&quot;Adult&quot; now reads 175, expected 170</strong></div>
+      <div><span>Check details</span><strong>100% confidence · 1 assertion</strong></div>
+
+
+    </div>
+  </details><details class="claim-row" id="claim-kaikoura-whale-watch-demo%23senior-blind" data-group="review" data-search="senior admission on the ocean cabin tour is nz$140. https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/ unverifiable the source did not expose a reliable senior price after the scraper retried. whale watch kaikoura - ocean cabin pricing (demo)">
+    <summary class="claim-grid">
+      <span class="claim-cell claim-name" data-label="Claim">
+        <small>Whale Watch Kaikoura - Ocean Cabin pricing (demo)</small>
+        <strong>Senior admission on the Ocean Cabin tour is NZ$140.</strong>
+      </span>
+      <span class="claim-cell" data-label="Source"><a class="source-link" href="https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/" target="_blank" rel="noreferrer">whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/<span aria-hidden="true">↗</span></a></span>
+      <span class="claim-cell" data-label="Status"><span class="status status--unverifiable"><span aria-hidden="true"></span>Unverifiable</span></span>
+      <span class="claim-cell claim-time" data-label="Last checked">Just now<span aria-hidden="true">›</span></span>
+    </summary>
+    <div class="claim-receipt">
+      <div><span>Current reading</span><strong>No reliable current value</strong></div>
+      <div><span>Why</span><strong>The source did not expose a reliable senior price after the scraper retried.</strong></div>
+      <div><span>Check details</span><strong>Confidence n/a · 1 assertion</strong></div>
+
+
+    </div>
+  </details><details class="claim-row" id="claim-kaikoura-whale-watch-demo%23child-holds" data-group="holds" data-search="child (3-15 years) admission on the ocean cabin tour is nz$60. https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/ holds &quot;child (3yrs-15yrs)&quot; still satisfies the assertion whale watch kaikoura - ocean cabin pricing (demo)">
+    <summary class="claim-grid">
+      <span class="claim-cell claim-name" data-label="Claim">
+        <small>Whale Watch Kaikoura - Ocean Cabin pricing (demo)</small>
+        <strong>Child (3-15 years) admission on the Ocean Cabin tour is NZ$60.</strong>
+      </span>
+      <span class="claim-cell" data-label="Source"><a class="source-link" href="https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/" target="_blank" rel="noreferrer">whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/<span aria-hidden="true">↗</span></a></span>
+      <span class="claim-cell" data-label="Status"><span class="status status--holds"><span aria-hidden="true"></span>Holds</span></span>
+      <span class="claim-cell claim-time" data-label="Last checked">May 20<span aria-hidden="true">›</span></span>
+    </summary>
+    <div class="claim-receipt">
+      <div><span>Current reading</span><strong>“Child (3yrs-15yrs)” = 60 NZD</strong></div>
+      <div><span>Why</span><strong>&quot;Child (3yrs-15yrs)&quot; still satisfies the assertion</strong></div>
+      <div><span>Check details</span><strong>100% confidence · 1 assertion</strong></div>
+
+
+    </div>
+  </details><details class="claim-row" id="claim-kaikoura-whale-watch-demo%23adult-holds" data-group="holds" data-search="adult admission on the whale watch kaikoura ocean cabin tour is nz$175. https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/ holds &quot;adult&quot; still satisfies the assertion whale watch kaikoura - ocean cabin pricing (demo)">
+    <summary class="claim-grid">
+      <span class="claim-cell claim-name" data-label="Claim">
+        <small>Whale Watch Kaikoura - Ocean Cabin pricing (demo)</small>
+        <strong>Adult admission on the Whale Watch Kaikoura Ocean Cabin tour is NZ$175.</strong>
+      </span>
+      <span class="claim-cell" data-label="Source"><a class="source-link" href="https://whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/" target="_blank" rel="noreferrer">whalewatch.co.nz/your-experience/our-tours/whale-watch-tour/<span aria-hidden="true">↗</span></a></span>
+      <span class="claim-cell" data-label="Status"><span class="status status--holds"><span aria-hidden="true"></span>Holds</span></span>
+      <span class="claim-cell claim-time" data-label="Last checked">Apr 4<span aria-hidden="true">›</span></span>
+    </summary>
+    <div class="claim-receipt">
+      <div><span>Current reading</span><strong>“Adult” = 175 NZD</strong></div>
+      <div><span>Why</span><strong>&quot;Adult&quot; still satisfies the assertion</strong></div>
+      <div><span>Check details</span><strong>100% confidence · 1 assertion</strong></div>
+
+
+    </div>
+  </details></div>
+            <div class="empty" hidden><strong>No matching claims</strong><span>Try another filter or search term.</span></div>
+          </section>
+          <section class="panel"><div class="panel-head"><h2>Latest receipt</h2><span>Aug 17</span></div><ol class="receipt-steps">
+    <li><span aria-hidden="true">↓</span><div><strong>Source captured</strong><small>Just now</small></div></li>
+    <li><span aria-hidden="true">⚖</span><div><strong>Claim compared</strong><small>Just now</small></div></li>
+    <li><span aria-hidden="true">▤</span><div><strong>Evidence saved</strong><small>Just now</small></div></li>
+  </ol></section>
+        </div>
+        <footer class="page-footer">Generated locally by claimrot. No report data was uploaded. · <a href="https://claimrot.github.io/claimrot/">About claimrot</a> · <a href="https://github.com/claimrot/claimrot">Source</a></footer>
+      </div>
+    </main>
+  </div>
+  <script>
+    (() => {
+      const filters = [...document.querySelectorAll('.filter')];
+      const rows = [...document.querySelectorAll('.claim-row')];
+      const search = document.querySelector('.search');
+      const count = document.querySelector('.result-count');
+      const empty = document.querySelector('.empty');
+      let active = 'all';
+      const update = () => {
+        const term = search.value.trim().toLowerCase();
+        let visible = 0;
+        for (const row of rows) {
+          const matchesGroup = active === 'all' || row.dataset.group === active;
+          const matchesTerm = !term || row.dataset.search.includes(term);
+          row.hidden = !(matchesGroup && matchesTerm);
+          if (!row.hidden) visible++;
+        }
+        count.textContent = visible + ' result' + (visible === 1 ? '' : 's');
+        empty.hidden = visible !== 0;
+      };
+      for (const button of filters) button.addEventListener('click', () => {
+        active = button.dataset.filter;
+        for (const candidate of filters) candidate.setAttribute('aria-pressed', String(candidate === button));
+        update();
+      });
+      search.addEventListener('input', update);
+    })();
+  </script>
+</body>
+</html>

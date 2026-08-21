@@ -46,86 +46,72 @@
     <span>claimrot</span>
   </a>
   <nav>
-    <a href="#start">Quickstart</a>
-    <a href="https://github.com/claimrot/claimrot/blob/main/docs/architecture.md">Architecture</a>
+    <a href="#how-it-works">How it works</a>
+    <a href="#verdicts">Verdicts</a>
+    <a href="#start">Docs</a>
     <a href="https://github.com/claimrot/claimrot">GitHub</a>
   </nav>
+  <a class="bar__cta" href="demo/">View dashboard</a>
 </header>
 
 <main id="main">
 
 <section class="hero">
-  <h1>Your citation still opens.<br>Its claim may not.</h1>
-
-  <div class="drift">
-    <figure class="snap">
-      <figcaption>When you published</figcaption>
-      <div class="win" aria-hidden="true">
-        <div class="win__bar"><i></i><i></i><i></i></div>
-        <div class="win__body">
-          <svg class="win__link" viewBox="0 0 24 24"><use href="#i-link"/></svg>
-          <div class="win__lines"><span></span><span></span><span></span></div>
-        </div>
+  <div class="hero-grid">
+    <div class="hero-copy">
+      <p class="eyebrow">Claim health, on autopilot</p>
+      <h1>The web changes.<br>Your claims should know.</h1>
+      <p class="hero-lede">claimrot checks the facts you publish against their original sources—and shows you what changed, when, and why.</p>
+      <div class="cta-row">
+        <a class="cta" href="#start">Check my claims</a>
+        <a class="text-cta" href="demo/">View a sample report <span aria-hidden="true">→</span></a>
       </div>
-      <p class="amount">NZ$170</p>
-    </figure>
-
-    <div class="span">
-      <p class="span__label"><span>18 months pass</span></p>
-      <img class="span__art" src="assets/decay.webp" alt="" width="1000" height="303">
-      <div class="span__axis" aria-hidden="true"></div>
-      <ol class="span__ticks">
-        <li>0</li><li>3M</li><li>6M</li><li>9M</li><li>12M</li><li>15M</li><li>18M</li>
-      </ol>
+      <p class="trust"><span aria-hidden="true">◇</span> Evidence saved with every check.</p>
     </div>
 
-    <figure class="snap snap--now">
-      <figcaption>Source today</figcaption>
-      <div class="win" aria-hidden="true">
-        <div class="win__bar"><i></i><i></i><i></i></div>
-        <div class="win__body">
-          <svg class="win__link" viewBox="0 0 24 24"><use href="#i-link"/></svg>
-          <div class="win__lines"><span></span><span></span><span></span></div>
-        </div>
+    <div class="lifecycle" aria-label="A published claim changes at its source and is flagged for action">
+      <div class="journey">
+        <article class="journey-card journey-card--fresh">
+          <p><span aria-hidden="true">✓</span> Published</p>
+          <strong>Adult admission<br>is NZ$170</strong>
+          <small><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-link"/></svg> whalewatch.co.nz/tour</small>
+          <time datetime="2026-05-04">May 04</time>
+        </article>
+        <span class="journey-line journey-line--fresh" aria-hidden="true"></span>
+        <article class="journey-card journey-card--changed">
+          <p><span aria-hidden="true">!</span> Source changed</p>
+          <strong>NZ$170 → NZ$175</strong>
+          <small><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-link"/></svg> whalewatch.co.nz/tour</small>
+          <time datetime="2026-07-19">Jul 19</time>
+        </article>
+        <span class="journey-line journey-line--drift" aria-hidden="true"></span>
+        <article class="journey-card journey-card--drift">
+          <p><span aria-hidden="true">×</span> Drift detected</p>
+          <strong>Action needed</strong>
+          <small><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-link"/></svg> whalewatch.co.nz/tour</small>
+          <time datetime="2026-08-17">Aug 17</time>
+        </article>
       </div>
-      <p class="amount">NZ$175</p>
-      <p class="badge">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.8 21.2 20H2.8L12 3.8Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4.2M12 16.6v.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        Drifted
-      </p>
-    </figure>
+      <ol class="mini-receipt">
+        <li><span aria-hidden="true">✓</span><strong>Source captured</strong><time>11:12 AM</time></li>
+        <li><span aria-hidden="true">✓</span><strong>Claim compared</strong><time>11:12 AM</time></li>
+        <li><span aria-hidden="true">✓</span><strong>Evidence saved</strong><time>11:12 AM</time></li>
+      </ol>
+    </div>
   </div>
 
-  <p class="tagline">Catch factual drift before your readers do.</p>
-  <p class="byline">Self-healing extraction &middot; Bright Data Scraper Studio</p>
-
-  <a class="cta" href="https://github.com/claimrot/claimrot">
-    <svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
-    View on GitHub
-  </a>
-
-  <ul class="notes">
-    <li>
-      <p class="notes__k">When it goes blind</p>
-      <p>
-        When a scraper goes blind, <strong>Bright Data Scraper Studio</strong>
-        rewrites it and the check runs again. Only a <em>working</em> scraper
-        is allowed to report that something is gone.
-      </p>
-    </li>
-    <li>
-      <p class="notes__k">No API key needed</p>
-      <p>
-        Reading a claim runs on the <strong>Claude</strong> or
-        <strong>Codex CLI</strong> you are already signed into. An
-        <code>ANTHROPIC_API_KEY</code> works too, if you would rather be
-        billed per token.
-      </p>
-    </li>
-  </ul>
+  <div class="process" id="how-it-works">
+    <p class="eyebrow">From fresh to false</p>
+    <h2>Claims rarely break. They drift.</h2>
+    <ol>
+      <li><span class="process-icon process-icon--green" aria-hidden="true">↗</span><div><strong>1. Monitor</strong><p>Connect each published claim to its source.</p></div></li>
+      <li><span class="process-icon process-icon--amber" aria-hidden="true">⌕</span><div><strong>2. Check</strong><p>claimrot rechecks it on your schedule.</p></div></li>
+      <li><span class="process-icon process-icon--violet" aria-hidden="true">▤</span><div><strong>3. Act</strong><p>Get the exact change and a saved receipt.</p></div></li>
+    </ol>
+  </div>
 </section>
 
-<section class="band">
+<section class="band" id="verdicts">
     <div class="rail">
     <p class="eyebrow">The third answer</p>
     <h2>Four answers, not two</h2>
@@ -310,6 +296,7 @@ npm run cli -- report</code></pre>
     <a href="https://github.com/claimrot/claimrot">Source</a> &middot;
     <a href="https://github.com/claimrot/claimrot/blob/main/docs/architecture.md">Architecture</a> &middot;
     <a href="https://github.com/claimrot/claimrot/blob/main/docs/design.md">Design notes</a> &middot;
+    <a href="demo/">Live dashboard</a> &middot;
     MIT
   </p>
   <p class="fine">Built for the Bright Data Into the Scrape-Verse hackathon, August 2026.</p>

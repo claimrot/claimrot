@@ -2,8 +2,9 @@
 
 # claimrot
 
-Re-checks the claims your docs cite against the pages they cite, and tells you
-which ones stopped being true.
+Extracts structured facts from public web pages, keeps their history locally,
+and re-checks the claims your docs cite so you know which ones stopped being
+true.
 
 [![CI](https://github.com/claimrot/claimrot/actions/workflows/ci.yml/badge.svg)](https://github.com/claimrot/claimrot/actions/workflows/ci.yml)
 · [Site](https://claimrot.github.io/claimrot/)
@@ -67,6 +68,90 @@ npm run cli -- check
 npm run cli -- report
 ```
 
+## Structured extraction monitors
+
+Use claimrot as a local extraction process for another website or application.
+Describe the values you want once, then let claimrot persist every run in its
+SQLite database:
+
+```json
+{
+  "fields": {
+    "name": { "type": "string", "description": "Product name" },
+    "description": { "type": "text", "description": "Product description" },
+    "price": { "type": "money", "description": "Current advertised price" }
+  },
+  "intervalDays": 7
+}
+```
+
+[`examples/product.schema.json`](examples/product.schema.json) contains that
+complete schema. Create the monitor and perform its first extraction:
+
+```bash
+npm run cli -- --db claimrot.db extract https://shop.example/product/123 \
+  --schema examples/product.schema.json --id product-123
+```
+
+Read the stable application-facing result, perform a dry-run that does not
+replace it, or force another persisted extraction:
+
+```bash
+npm run cli -- --db claimrot.db get product-123 --json
+npm run cli -- --db claimrot.db test product-123 --json
+npm run cli -- --db claimrot.db run product-123 --force --json
+```
+
+`claimrot run` with no ID checks every monitor whose `next_run_at` has passed.
+It is intentionally not a daemon: invoke it from cron, a job queue, or a
+scheduled workflow as often as you like, and the database decides what is due.
+
+Open the operational local dashboard with:
+
+```bash
+npm run cli -- view ./claimrot.db
+```
+
+It binds to `127.0.0.1` only and provides authenticated, per-process **Run now**
+and **Test extraction** controls. Self-healing runs in the extraction process,
+then its outcome is saved for this dashboard to display. The dashboard itself
+never edits a scraper. Hosts with a registered Bright Data collector can heal
+and retry automatically; the generic schema.org/Open Graph fallback records
+healing as unavailable rather than pretending that a collector was repaired.
+
+For an application integration, prefer `get --json` over querying internal
+tables directly. The SQLite database remains available for documented,
+read-only analytics, but the JSON shape can stay stable while storage evolves.
+
+## HTML dashboard
+
+Generate a self-contained report for teammates, reviewers, or anyone who would
+rather not read terminal output:
+
+```bash
+npm run --silent cli -- --db claimrot.db report --html > claimrot-report.html
+```
+
+Open `claimrot-report.html` in any browser. It shows every claim's current state
+(including never-checked claims), current-value evidence, confidence, source
+links, and separate views for claims that need action or human review. Search and
+filtering happen entirely in the generated file; no report data is uploaded and
+no server is required.
+
+The public GitHub Pages site links to a sanitized dashboard generated from
+`examples/demo.db` at `docs/demo/index.html`. Regenerate that committed demo
+after changing the renderer or fixture:
+
+```bash
+npm run sync:pages-demo
+```
+
+`npm run build:pages` assembles the complete Pages tree in `dist/pages`, while
+CI runs `npm run check:pages-demo` to ensure the published demo still matches
+the renderer and fixture. Real project databases and reports must never be
+copied into `docs/`, because a generated report contains its claims and source
+URLs.
+
 ## The idea
 
 Most monitors compare a page to its last snapshot and answer *same* or
@@ -98,7 +183,7 @@ More in [docs/architecture.md](docs/architecture.md).
 ## In CI
 
 ```bash
-npm run cli -- report --json > claimrot-verdicts.json
+npm run --silent cli -- report --json > claimrot-verdicts.json
 ```
 
 ```yaml

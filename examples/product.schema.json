@@ -1,0 +1,17 @@
+{
+  "fields": {
+    "name": {
+      "type": "string",
+      "description": "Product name"
+    },
+    "description": {
+      "type": "text",
+      "description": "Product description"
+    },
+    "price": {
+      "type": "money",
+      "description": "Current advertised price"
+    }
+  },
+  "intervalDays": 7
+}

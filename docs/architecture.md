@@ -178,7 +178,16 @@ One SQLite file.
 documents ──< claims ──< assertions
                  │
                  └──< verdicts   (verdict, confidence, evidence_json)
+
+extraction_monitors ──< extraction_runs ──< extracted_values
 ```
+
+The two graphs share the database but serve different workflows. The first
+validates pre-authored claims. The second stores caller-authored extraction
+schemas, every persisted or dry-run extraction, structured field values,
+scrape timestamps, collector versions, and self-healing outcomes. A dry run is
+auditable in `extraction_runs` but is never selected as a monitor's current
+value.
 
 Two timestamps on `claims` do different jobs and must not be merged:
 

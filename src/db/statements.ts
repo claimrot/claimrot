@@ -11,8 +11,8 @@ export const INSERT_ASSERTION_SQL = `INSERT OR REPLACE INTO assertions
    VALUES (@id,@claimId,@field,@op,@valueNum,@valueText,@valueMax,@unit,@tolerance,@anchorLabel,@anchorContext,@anchorPath)`;
 
 export const INSERT_VERDICT_SQL =
-  `INSERT INTO verdicts (id,check_id,claim_id,verdict,confidence,evidence_json,created_at)
-   VALUES (?,?,?,?,?,?,?)`;
+  `INSERT INTO verdicts (id,check_id,claim_id,assertion_id,verdict,confidence,evidence_json,created_at)
+   VALUES (?,?,?,?,?,?,?,?)`;
 
 // Exported (not just used inline) so a regression test can assert this exact
 // string targets last_checked_at — checked_at must never be written after

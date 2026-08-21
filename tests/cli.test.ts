@@ -8,7 +8,15 @@ import { openDb } from "../src/db/index.js";
 describe("cli", () => {
   it("registers every documented command", () => {
     const names = buildProgram().commands.map((c) => c.name());
-    expect(names.sort()).toEqual(["check", "ingest", "report", "study"]);
+    expect(names.sort()).toEqual([
+      "check", "extract", "get", "ingest", "report", "run", "study", "test", "view",
+    ]);
+    const report = buildProgram().commands.find((c) => c.name() === "report")!;
+    expect(report.options.map((o) => o.long)).toContain("--html");
+    const json = report.options.find((o) => o.long === "--json") as unknown as { conflictsWith: string[] };
+    const html = report.options.find((o) => o.long === "--html") as unknown as { conflictsWith: string[] };
+    expect(json.conflictsWith).toContain("html");
+    expect(html.conflictsWith).toContain("json");
   });
 
   it("check's own update statement advances last_checked_at without disturbing checked_at", () => {
@@ -138,5 +146,17 @@ describe("repeatAmbiguousClaims", () => {
     insertVerdict(db, "c2", "AMBIGUOUS", "2026-08-01T00:00:00Z");
     insertVerdict(db, "c2", "HOLDS", "2026-08-08T00:00:00Z");
     expect(repeatAmbiguousClaims(db)).not.toContain("c2");
+  });
+
+  it("does not mistake one AMBIGUOUS result on each of two assertions for a repeat", () => {
+    const db = openDb(":memory:");
+    const insert = db.prepare(
+      `INSERT INTO verdicts
+         (id,check_id,claim_id,assertion_id,verdict,confidence,evidence_json,created_at)
+       VALUES (?,'','c3',?,'AMBIGUOUS',0.5,'{}',?)`,
+    );
+    insert.run("v1", "c3:a1", "2026-08-01T00:00:00Z");
+    insert.run("v2", "c3:a2", "2026-08-08T00:00:00Z");
+    expect(repeatAmbiguousClaims(db)).not.toContain("c3");
   });
 });

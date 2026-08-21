@@ -16,7 +16,7 @@
 
   --measure: 34rem;  /* prose: ~70 characters */
   --wide:    52rem;  /* code, receipts, the drift diagram */
-  --hero:    60rem;  /* the headline wants one more line-length than prose does */
+  --hero:    76rem;  /* product story and claim lifecycle share one wide stage */
   --pad: clamp(1.25rem, 5vw, 3rem);
 }
 
@@ -78,6 +78,20 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .wordmark__mark { width: 1.6rem; height: 1.6rem; color: var(--ink); }
 
 .bar nav { display: flex; gap: 1.4rem; font-size: 0.95rem; }
+.bar nav { justify-content: center; }
+.bar__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.8rem;
+  padding: .65rem 1rem;
+  color: var(--rust-ink);
+  border: 1px solid var(--rust);
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: 600;
+}
+.bar__cta:hover { color: var(--paper); background: var(--rust); }
 
 /* ---- shared section rhythm -------------------------------------------- */
 
@@ -349,6 +363,9 @@ h1 {
 }
 .cta:hover { background: #33302c; }
 .cta svg { width: 1.15rem; height: 1.15rem; }
+.cta-row { display: flex; justify-content: center; flex-wrap: wrap; gap: .75rem; }
+.cta--secondary { color: var(--ink); background: transparent; border: 1px solid var(--ink); }
+.cta--secondary:hover { background: var(--band); }
 
 /* Two things a visitor needs before they will try this: what repairs the
    scraper, and what it costs them to run. Stated in the hero rather than
@@ -380,6 +397,138 @@ h1 {
 }
 .notes strong { font-weight: 600; color: var(--ink); }
 .notes code { color: var(--ink); }
+
+/* ---- product journey hero --------------------------------------------- */
+
+.hero {
+  padding-block: clamp(3rem, 6vw, 5rem) 2.5rem;
+  text-align: left;
+}
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(20rem, .85fr) minmax(36rem, 1.35fr);
+  gap: clamp(2rem, 5vw, 5rem);
+  align-items: center;
+  max-width: var(--hero);
+  margin: 0 auto;
+}
+.hero-copy .eyebrow { margin-bottom: 1.1rem; }
+.hero h1 {
+  margin: 0;
+  font-size: clamp(3rem, 5.4vw, 5rem);
+  line-height: .97;
+  letter-spacing: -.045em;
+  text-wrap: balance;
+}
+.hero-lede {
+  max-width: 36rem;
+  margin: 1.5rem 0 0;
+  color: var(--muted);
+  font-size: clamp(1.05rem, 1.7vw, 1.3rem);
+  line-height: 1.55;
+}
+.hero .cta-row { justify-content: flex-start; align-items: center; margin-top: 1.5rem; gap: 1.4rem; }
+.hero .cta {
+  min-height: 3.2rem;
+  padding: .8rem 1.45rem;
+  color: var(--paper);
+  background: var(--rust);
+  border: 1px solid var(--rust);
+  border-radius: 4px;
+  font-weight: 600;
+}
+.hero .cta:hover { background: var(--rust-ink); }
+.text-cta { color: var(--rust-ink); font-weight: 600; text-decoration: none; }
+.text-cta span { display: inline-block; margin-left: .35rem; font-size: 1.25rem; transition: transform 160ms ease; }
+.text-cta:hover span { transform: translateX(3px); }
+.trust { display: flex; align-items: center; gap: .55rem; margin: 1.35rem 0 0; color: var(--muted); font-size: .9rem; }
+.trust span { width: 1.35rem; height: 1.35rem; display: grid; place-items: center; border: 1px solid var(--muted); border-radius: 50%; }
+.lifecycle { min-width: 0; padding: 1rem 0 0; }
+.journey {
+  display: grid;
+  grid-template-columns: minmax(9.5rem, 1fr) 2.5rem minmax(9.5rem, 1fr) 2.5rem minmax(9.5rem, 1fr);
+  align-items: center;
+}
+.journey-card {
+  position: relative;
+  min-height: 12.8rem;
+  padding: 1.05rem;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  background: rgb(250 248 244 / 92%);
+  box-shadow: 0 12px 34px rgb(48 36 22 / 7%);
+}
+.journey-card p {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin: 0;
+  font: 600 .66rem/1 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.journey-card p span { width: 1.6rem; height: 1.6rem; display: grid; place-items: center; border-radius: 50%; color: white; font: 700 1rem/1 var(--body); }
+.journey-card strong { display: block; margin-top: 1.1rem; font-size: 1.05rem; line-height: 1.35; }
+.journey-card small { display: flex; align-items: flex-start; gap: .35rem; margin-top: 1.4rem; color: currentColor; font-size: .66rem; line-height: 1.4; overflow-wrap: anywhere; }
+.journey-card small svg { width: .95rem; height: .95rem; flex: none; }
+.journey-card time { position: absolute; top: calc(100% + 1rem); left: 0; width: 100%; text-align: center; color: var(--ink); font: 600 .72rem/1 var(--mono); text-transform: uppercase; letter-spacing: .05em; }
+.journey-card--fresh { color: var(--green, #17623d); border-color: #8bb29b; }
+.journey-card--fresh p span { background: #28724d; }
+.journey-card--changed { color: #b95a00; border-color: #e2aa73; }
+.journey-card--changed p span { background: #de790d; }
+.journey-card--drift { color: var(--rust-ink); border-color: #d9866a; }
+.journey-card--drift p span { background: var(--rust); }
+.journey-line { height: 3px; background: currentColor; }
+.journey-line--fresh { color: #28724d; }
+.journey-line--drift { color: var(--rust); background: repeating-linear-gradient(90deg, currentColor 0 5px, transparent 5px 11px); }
+.mini-receipt {
+  width: min(24rem, 62%);
+  margin: 3.8rem auto 0;
+  padding: .6rem 1rem;
+  list-style: none;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  background: rgb(250 248 244 / 92%);
+  box-shadow: 0 12px 34px rgb(48 36 22 / 7%);
+}
+.mini-receipt li { display: grid; grid-template-columns:auto 1fr auto; align-items: center; gap: .65rem; padding: .5rem 0; border-bottom: 1px solid var(--rule); }
+.mini-receipt li:last-child { border-bottom: 0; }
+.mini-receipt li>span { width: 1.5rem; height: 1.5rem; display: grid; place-items: center; border-radius: 50%; color: var(--green, #17623d); background: #e4ede5; }
+.mini-receipt strong { font-size: .8rem; }
+.mini-receipt time { color: var(--muted); font: .62rem/1 var(--mono); text-transform: uppercase; }
+.process {
+  max-width: var(--hero);
+  margin: 3.3rem auto 0;
+  padding-top: 2.1rem;
+  border-top: 1px solid var(--rule);
+  text-align: center;
+}
+.process h2 { margin: 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -.03em; }
+.process ol { display: grid; grid-template-columns: repeat(3, 1fr); margin: 2rem 0 0; padding: 0; list-style: none; text-align: left; }
+.process li { display: flex; align-items: center; gap: 1rem; min-width: 0; padding: .4rem 1.5rem; border-right: 1px solid var(--rule); }
+.process li:last-child { border-right: 0; }
+.process li strong { display: block; color: var(--rust-ink); font: 600 .75rem/1 var(--mono); text-transform: uppercase; letter-spacing: .05em; }
+.process li p { margin: .55rem 0 0; color: var(--muted); font-size: .9rem; line-height: 1.45; }
+.process-icon { width: 3.5rem; height: 3.5rem; flex: 0 0 auto; display: grid; place-items: center; border-radius: 50%; font-size: 1.55rem; }
+.process-icon--green { color: #17623d; background: #e4ede5; }
+.process-icon--amber { color: #b95a00; background: #f8eadb; }
+.process-icon--violet { color: #68508e; background: #eee8f4; }
+@media (max-width: 64rem) {
+  .hero-grid { grid-template-columns: 1fr; }
+  .hero-copy { max-width: 40rem; }
+  .lifecycle { max-width: 46rem; }
+}
+@media (max-width: 48rem) {
+  .bar { display: grid; grid-template-columns: 1fr auto; }
+  .bar nav { grid-column: 1 / -1; order: 3; justify-content: flex-start; overflow-x: auto; padding-top: .8rem; }
+  .journey { grid-template-columns: 1fr; gap: .65rem; }
+  .journey-card { min-height: 10rem; }
+  .journey-card time { position: static; display: block; margin-top: 1rem; text-align: left; }
+  .journey-line { width: 3px; height: 1.3rem; margin: 0 auto; }
+  .mini-receipt { width: 100%; margin-top: 1.2rem; }
+  .process ol { grid-template-columns: 1fr; gap: 1rem; }
+  .process li { padding: .75rem 0; border-right: 0; border-bottom: 1px solid var(--rule); }
+}
 
 /* ---- the receipt ------------------------------------------------------- */
 
