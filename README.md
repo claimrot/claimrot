@@ -2,185 +2,127 @@
 
 # claimrot
 
-Extracts structured facts from public web pages, keeps their history locally,
-and re-checks the claims your docs cite so you know which ones stopped being
-true.
+Know when a fact you depend on stops being true—even when its link still works.
 
 [![CI](https://github.com/claimrot/claimrot/actions/workflows/ci.yml/badge.svg)](https://github.com/claimrot/claimrot/actions/workflows/ci.yml)
-· [Site](https://claimrot.github.io/claimrot/)
+· [Website](https://claimrot.github.io/claimrot/)
+· [Live dashboard](https://claimrot.github.io/claimrot/demo/)
 · [Architecture](docs/architecture.md)
 
-## The problem
+## What it does
 
-You cite a page. Months later that page changes a number. The link still
-resolves, nothing 404s, no build breaks — and your documentation now states
-something false with a citation attached to it.
+A link checker tells you when a page disappears. claimrot tells you when the
+fact on that page changes.
 
-Link rot has a name and tooling. This doesn't.
+It can:
 
-## What it looks like
+- re-check claims quoted in documentation or content;
+- monitor structured fields such as product names, descriptions, and prices;
+- keep the history and evidence in a local SQLite database;
+- show results in the terminal, JSON, or a local HTML dashboard.
 
-```
-$ claimrot report
+If a scraper stops finding a value after a page redesign, claimrot does not
+pretend the value was removed. It tries to repair the scraper first and reports
+`UNVERIFIABLE` when it cannot reach a trustworthy conclusion.
 
-DRIFTED  (confidence 1.00, checked 2026-08-17)
-  published: Adult admission on the Ocean Cabin tour is NZ$170.
-  source:    https://whalewatch.co.nz/…/whale-watch-tour/
-  now:       "Adult" = 175
-  why:       "Adult" now reads 175, expected 170
-```
+## Install
 
-Real output, from a real page. More of it in [`examples/`](examples/).
-
-## Use it
-
-Node 22+. Only `ingest` needs a model at all, and it will use whichever of
-these you already have — an API key, or a CLI you're logged into:
-
-| `--backend` | Needs | Notes |
-| --- | --- | --- |
-| `claude-cli` | `claude`, logged in | Default. No API key. ~30s per claim. |
-| `codex-cli` | `codex`, logged in | No API key. ~25s per claim. |
-| `api` | `ANTHROPIC_API_KEY` | Fastest, metered, and the only one CI can use. |
-
-Picked automatically in that order, or set it yourself with `--backend` /
-`CLAIMROT_INGEST`. A logged-in CLI wins over `ANTHROPIC_API_KEY` on purpose:
-that variable is exported in plenty of shells for unrelated reasons, and it
-shouldn't quietly start billing you. `--backend api` opts in.
-
-The CLI backends also unset `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` for the
-child process, since both CLIs otherwise let an exported key override the login
-you chose them for.
-
-`check` and `report` need none of this.
+Requires Node.js 22 or newer.
 
 ```bash
-git clone https://github.com/claimrot/claimrot
-cd claimrot && npm install
+git clone https://github.com/claimrot/claimrot.git
+cd claimrot
+npm install
+```
 
-# Reduce prose claims into testable assertions. Once per claim, then never again.
-npm run cli -- ingest 'path/to/*.facts.json'
+## Check a published claim
 
-# Fetch each source, score candidates, heal when blind, record verdicts.
+Create a fact pack such as `pricing.facts.json`:
+
+```json
+{
+  "slug": "pricing-page",
+  "as_of": "2026-08-22",
+  "facts": [
+    {
+      "id": "adult-price",
+      "claim": "Adult admission is NZ$175.",
+      "source_url": "https://example.com/pricing",
+      "volatile": true
+    }
+  ]
+}
+```
+
+Then ingest, check, and report:
+
+```bash
+npm run cli -- ingest '*.facts.json'
 npm run cli -- check
-
-# Print the receipts.
 npm run cli -- report
 ```
 
-## Structured extraction monitors
+`ingest` uses a model once to turn prose into a testable assertion. It can use
+an existing Claude or Codex CLI login, or an Anthropic API key. Later checks do
+not need a model.
 
-Use claimrot as a local extraction process for another website or application.
-Describe the values you want once, then let claimrot persist every run in its
-SQLite database:
+## Monitor fields on a page
+
+Describe the fields you want in a schema:
 
 ```json
 {
   "fields": {
     "name": { "type": "string", "description": "Product name" },
-    "description": { "type": "text", "description": "Product description" },
-    "price": { "type": "money", "description": "Current advertised price" }
+    "price": { "type": "money", "description": "Advertised price" }
   },
   "intervalDays": 7
 }
 ```
 
-[`examples/product.schema.json`](examples/product.schema.json) contains that
-complete schema. Create the monitor and perform its first extraction:
+Create the monitor and read its latest result:
 
 ```bash
-npm run cli -- --db claimrot.db extract https://shop.example/product/123 \
-  --schema examples/product.schema.json --id product-123
+npm run cli -- --db claimrot.db extract https://example.com/product \
+  --schema examples/product.schema.json --id example-product
+
+npm run cli -- --db claimrot.db get example-product --json
 ```
 
-Read the stable application-facing result, perform a dry-run that does not
-replace it, or force another persisted extraction:
+Run every monitor that is due, or open the local dashboard:
 
 ```bash
-npm run cli -- --db claimrot.db get product-123 --json
-npm run cli -- --db claimrot.db test product-123 --json
-npm run cli -- --db claimrot.db run product-123 --force --json
+npm run cli -- --db claimrot.db run
+npm run cli -- view claimrot.db
 ```
 
-`claimrot run` with no ID checks every monitor whose `next_run_at` has passed.
-It is intentionally not a daemon: invoke it from cron, a job queue, or a
-scheduled workflow as often as you like, and the database decides what is due.
+`run` is designed for cron, a job queue, or a scheduled workflow; it is not a
+background daemon.
 
-Open the operational local dashboard with:
+## Verdicts
 
-```bash
-npm run cli -- view ./claimrot.db
-```
+| Verdict | Meaning |
+| --- | --- |
+| `HOLDS` | The source still supports the claim. |
+| `DRIFTED` | The value changed. |
+| `MOVED` | The claim is still true, but the source moved. |
+| `REMOVED` | A repaired scraper still could not find the value. |
+| `AMBIGUOUS` / `CONFLICT` | The evidence needs review. |
+| `UNVERIFIABLE` | claimrot could not check safely, so it did not guess. |
 
-It binds to `127.0.0.1` only and provides authenticated, per-process **Run now**
-and **Test extraction** controls. Self-healing runs in the extraction process,
-then its outcome is saved for this dashboard to display. The dashboard itself
-never edits a scraper. Hosts with a registered Bright Data collector can heal
-and retry automatically; the generic schema.org/Open Graph fallback records
-healing as unavailable rather than pretending that a collector was repaired.
+Every verdict includes the source, evidence, confidence, and reason.
 
-For an application integration, prefer `get --json` over querying internal
-tables directly. The SQLite database remains available for documented,
-read-only analytics, but the JSON shape can stay stable while storage evolves.
+## Scraper Studio
 
-## HTML dashboard
+For configured hosts, claimrot runs Bright Data Scraper Studio collectors and
+asks Scraper Studio to heal them when extraction goes blind. Other public pages
+use a schema.org/Open Graph fallback, which can detect extraction failure but
+cannot repair itself.
 
-Generate a self-contained report for teammates, reviewers, or anyone who would
-rather not read terminal output:
+## CI
 
-```bash
-npm run --silent cli -- --db claimrot.db report --html > claimrot-report.html
-```
-
-Open `claimrot-report.html` in any browser. It shows every claim's current state
-(including never-checked claims), current-value evidence, confidence, source
-links, and separate views for claims that need action or human review. Search and
-filtering happen entirely in the generated file; no report data is uploaded and
-no server is required.
-
-The public GitHub Pages site links to a sanitized dashboard generated from
-`examples/demo.db` at `docs/demo/index.html`. Regenerate that committed demo
-after changing the renderer or fixture:
-
-```bash
-npm run sync:pages-demo
-```
-
-`npm run build:pages` assembles the complete Pages tree in `dist/pages`, while
-CI runs `npm run check:pages-demo` to ensure the published demo still matches
-the renderer and fixture. Real project databases and reports must never be
-copied into `docs/`, because a generated report contains its claims and source
-URLs.
-
-## The idea
-
-Most monitors compare a page to its last snapshot and answer *same* or
-*changed*. That holds up until the checker goes blind — a redesign moves the
-price, a selector stops matching — and then a two-answer system tells you the
-operator deleted something they didn't.
-
-claimrot has more than two answers.
-
-- `HOLDS` — the source still says what you published.
-- `DRIFTED` — it changed. Here's the old value, the new one, and the URL.
-- `MOVED` — still true, but not where you cited it. Here's the new URL.
-- `UNVERIFIABLE` — we couldn't read it, and we won't guess.
-
-Finding nothing never produces a verdict. It asks Bright Data Scraper Studio to
-repair the scraper, runs it again, and — if a working scraper still sees
-nothing — looks for the value elsewhere on the same site before concluding
-anything. Only when a healed scraper finds it nowhere does claimrot say
-`REMOVED`. Self-healing isn't what makes this fast; it's what makes a negative
-worth believing.
-
-The other half is that an assertion stores *"whatever sits beside the label
-Adult"*, not *"175"*. An operator's NZ$59 was once the adult fare and is now the
-senior fare — the number is still on the page, so anything searching for the
-value calls that claim healthy forever.
-
-More in [docs/architecture.md](docs/architecture.md).
-
-## In CI
+Export verdicts and use the included GitHub Action to stop confident drift from
+being merged:
 
 ```bash
 npm run --silent cli -- report --json > claimrot-verdicts.json
@@ -193,55 +135,15 @@ npm run --silent cli -- report --json > claimrot-verdicts.json
     confidence-floor: "0.75"
 ```
 
-`UNVERIFIABLE` never fails a build. A check that goes red because our own
-scraper broke gets turned off within a fortnight, and then it protects nobody.
+`UNVERIFIABLE` never fails a build.
 
-## Limitations
+## Responsible use
 
-- **No half-life figure is published anywhere in this repo.** Measuring how fast
-  cited claims decay needs an ingest run over the full 2,572-claim corpus, which
-  nobody has run yet. The four-claim example proves the mechanism works; it says
-  nothing about a decay rate.
-- **Checks run per claim, not per page.** A page cited by three claims is fetched
-  three times — roughly 2.7× the requests the corpus needs. Fixing it means
-  reworking the loop that per-host pacing is built around, so it waited.
-- **Self-repair needs a Scraper Studio collector.** Bright Data rewrites the
-  scraper for every host you've provisioned one for. Past those, the generic
-  JSON-LD fallback still detects that it has gone blind — it just reports
-  `UNVERIFIABLE` rather than repairing itself, so the blind spot is always
-  declared, never guessed through.
-- **Relocation follows the site's own signals only.** When a value moves,
-  claimrot finds it via links on the cited page and the host's `sitemap.xml`
-  and reports `MOVED` with the new URL. That search stays on one host and stops
-  after five candidates; a value moved somewhere neither points to still
-  reports as `REMOVED`.
-- **The blob-label screen is structural, not semantic.** A genuine two-axis grid
-  cell labelled "Adult Weekday" gets screened out when "Adult" and "Weekday" are
-  both anchors. It fails toward `UNVERIFIABLE`, never toward a wrong verdict.
-- **Three things are specified but unwired:** `anchor_path`, `expires_at`, and
-  the `checks`/`candidates` tables. Listed in
-  [docs/architecture.md](docs/architecture.md) so nobody finds them by surprise.
-- The Action's bundle is committed at `dist/action/main.js` and must be rebuilt
-  when `action/main.ts` changes. CI won't catch a stale one.
+claimrot reads public pages only. It honours `robots.txt`, identifies itself,
+and limits each host to one request at a time at roughly 0.8 requests per
+second.
 
-## Conduct
-
-Public data only — nothing behind a login, paywall, or personal account.
-`api.viator.com` is an authenticated partner API and is excluded outright.
-
-One request in flight per host, about 0.8 per second, parallel across hosts and
-never within one. `robots.txt` is fetched once per host through that same queue
-and honoured before any claim on it is checked; a disallowed URL produces no
-verdict rather than a guess. Every direct request identifies itself as
-`claimrot/0.1 (+https://github.com/claimrot/claimrot)`.
-
-That pacing isn't decoration. 375 concurrent probes against a partner's
-production host once caused a 90-minute outage, and a monitor watching 352 hosts
-at once is a DDoS with a cron attached.
-
-## Built with
-
-Designed and implemented with Claude Code (Anthropic), under review throughout.
-Built for the Bright Data *Into the Scrape-Verse* hackathon, August 2026.
+See [Architecture](docs/architecture.md) for implementation details and known
+limitations.
 
 MIT
